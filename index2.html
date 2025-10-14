@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BPOL Airdrop - Simple Web Interface</title>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; max-width:900px; margin:24px auto; padding:16px; color:#0f172a }
+    h1{font-size:20px;margin-bottom:6px}
+    .card{border:1px solid #e6e9ef;border-radius:12px;padding:16px;margin:12px 0;}
+    label{display:block;margin:8px 0 4px;font-weight:600}
+    input, select, button, textarea {width:100%;padding:8px;border-radius:8px;border:1px solid #cbd5e1}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    pre{background:#000;color:#fff;padding:12px;border-radius:8px;overflow:auto}
+    .muted{color:#64748b;font-size:13px}
+    .progress{margin-top:8px}
+    .small{font-size:13px}
+  </style>
+</head>
+<body>
+  <h1>BPOL Airdrop — Simple HTML + MetaMask Interface</h1>
+  <div class="card">
+    <p class="muted">Created for contract: <strong>0x1bd8fE458e3aDdFE17DF1720Ae34f274c3717a35</strong></p>
+    <p class="muted">Token (BPOL): <strong>0x3fb009dd27fbc4e2cf183b65279363967a1e8182</strong></p>
+
+    <label>1) Connect wallet (MetaMask)</label>
+    <button id="connectBtn">Connect MetaMask</button>
+    <p id="account" class="small muted"></p>
+
+    <label>2) Settings</label>
+    <div class="row">
+      <div class="col">
+        <label>Distributor Contract</label>
+        <input id="contractAddress" value="0x1bd8fE458e3aDdFE17DF1720Ae34f274c3717a35" />
+      </div>
+      <div class="col">
+        <label>Token Address</label>
+        <input id="tokenAddress" value="0x3fb009dd27fbc4e2cf183b65279363967a1e8182" />
+      </div>
+    </div>
+
+    <label>3) Upload CSV (columns: address,amount)</label>
+    <input type="file" id="csvFile" accept=".csv" />
+    <p class="muted small">Amount should be in human-readable token units (e.g. "100" for 100 BPOL). Token has 18 decimals — UI will convert for you.</p>
+
+    <label>Chunk size (addresses per tx)</label>
+    <input id="chunkSize" type="number" value="150" />
+
+    <label>4) Start airdrop</label>
+    <button id="startBtn">Send Airdrop</button>
+
+    <div class="progress card" id="logBox" style="display:none">
+      <strong>Log</strong>
+      <div id="log"></div>
+    </div>
+
+    <p class="muted small">Warning: Each transaction pays gas in MATIC from your connected wallet. Test first on Mumbai testnet.</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <script>
+    // Minimal ABI
+    const DISTRIBUTOR_ABI = [
+      'function owner() view returns (address)',
+      'function batchTransfer(address token, address[] calldata recipients, uint256[] calldata amounts) external'
+    ];
+
+    let provider, signer, userAddress;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const accountP = document.getElementById('account');
+    const csvFile = document.getElementById('csvFile');
+    const startBtn = document.getElementById('startBtn');
+    const logBox = document.getElementById('logBox');
+    const logDiv = document.getElementById('log');
+    const contractInput = document.getElementById('contractAddress');
+    const tokenInput = document.getElementById('tokenAddress');
+    const chunkInput = document.getElementById('chunkSize');
+
+    function log(msg){ logBox.style.display='block'; const p = document.createElement('div'); p.innerHTML = msg; logDiv.appendChild(p); }
+
+    async function connect(){
+      if(window.ethereum === undefined){ alert('MetaMask not detected'); return; }
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+      accountP.textContent = 'Connected: ' + userAddress;
+      connectBtn.textContent = 'Connected';
+    }
+
+    connectBtn.addEventListener('click', connect);
+
+    function parseCSV(text){
+      const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+      const rows = lines.map(line => {
+        // simple CSV: address,amount
+        const parts = line.split(',').map(p => p.trim());
+        return parts;
+      });
+      return rows;
+    }
+
+    csvFile.addEventListener('change', async (ev) => {
+      log('CSV file loaded: ' + (ev.target.files[0] ? ev.target.files[0].name : ''));
+    });
+
+    startBtn.addEventListener('click', async () => {
+      try{
+        if(!signer){ alert('Please connect MetaMask first'); return; }
+        const file = csvFile.files[0];
+        if(!file){ alert('Select a CSV file first'); return; }
+
+        const text = await file.text();
+        const rows = parseCSV(text);
+        const recipients = [];
+        const amountsRaw = [];
+        for(const r of rows){
+          if(r.length < 2) continue;
+          const addr = r[0];
+          const a = r[1];
+          if(!ethers.utils.isAddress(addr)){ log('Skipping invalid address: ' + addr); continue; }
+          recipients.push(addr);
+          // convert human amount to wei using 18 decimals
+          const bn = ethers.utils.parseUnits(a, 18);
+          amountsRaw.push(bn);
+        }
+
+        if(recipients.length === 0){ alert('No valid rows found in CSV'); return; }
+
+        const chunkSize = parseInt(chunkInput.value) || 100;
+        const contractAddress = contractInput.value.trim();
+        const tokenAddress = tokenInput.value.trim();
+
+        const contract = new ethers.Contract(contractAddress, DISTRIBUTOR_ABI, provider);
+        const owner = await contract.owner();
+        const signerAddr = await signer.getAddress();
+        if(owner.toLowerCase() !== signerAddr.toLowerCase()){
+          const proceed = confirm('Connected wallet is NOT owner of distributor contract. Continue? (You must be owner to call batchTransfer)');
+          if(!proceed) return;
+        }
+
+        // chunking
+        let start = 0;
+        let batchNum = 0;
+        while(start < recipients.length){
+          batchNum++;
+          const end = Math.min(start + chunkSize, recipients.length);
+          const recSlice = recipients.slice(start, end);
+          const amtSlice = amountsRaw.slice(start, end).map(x => x.toString());
+
+          log(`Sending batch ${batchNum}: ${recSlice.length} recipients (indexes ${start}..${end-1})`);
+
+          const contractWithSigner = contract.connect(signer);
+          // call and wait
+          try{
+            const tx = await contractWithSigner.batchTransfer(tokenAddress, recSlice, amtSlice, { gasLimit: 3000000 });
+            log('Tx sent: ' + tx.hash);
+            await tx.wait();
+            log('Tx confirmed: ' + tx.hash);
+          }catch(err){
+            console.error(err);
+            log('<span style="color:crimson">Batch '+batchNum+' failed: '+(err && err.message ? err.message : err)+' </span>');
+            // stop on error
+            break;
+          }
+
+          start = end;
+          // small delay to let UI update
+          await new Promise(r=>setTimeout(r, 1200));
+        }
+
+        log('Process finished.');
+
+      }catch(e){ console.error(e); alert('Error: ' + e.message); }
+    });
+
+  </script>
+</body>
+</html>
