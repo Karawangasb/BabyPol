@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BabyPol (BPOL) Airdrop Sender</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
+  <!-- Gunakan ethers v5 (UMD bundle) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -110,11 +111,10 @@
 
   <script>
     let provider, signer;
-    const POLYGON_CHAIN_ID = '0x89'; // 137 in hex
+    const POLYGON_CHAIN_ID = 137;
 
-    // ABI dari BatchSender (hanya fungsi batchTransfer)
     const batchSenderAbi = [
-      "function batchTransfer(address token, address[] calldata recipients, uint256[] calldata amounts) external"
+      "function batchTransfer(address token, address[] recipients, uint256[] amounts)"
     ];
 
     const CONTRACT_ADDRESS = "0x1bd8fE458e3aDdFE17DF1720Ae34f274c3717a35";
@@ -122,21 +122,23 @@
 
     async function connectWallet() {
       if (!window.ethereum) {
-        alert("Please install MetaMask or a compatible wallet!");
+        alert("Please install MetaMask!");
         return;
       }
 
       try {
-        provider = new ethers.BrowserProvider(window.ethereum);
+        // Ethers v5: gunakan Web3Provider
+        provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
+        signer = provider.getSigner();
+
         const address = await signer.getAddress();
         document.getElementById("status").innerText = `✅ Connected: ${address.slice(0,6)}...${address.slice(-4)}`;
         document.getElementById("sendButton").disabled = false;
 
         // Cek jaringan
         const network = await provider.getNetwork();
-        const isPolygon = network.chainId === 137;
+        const isPolygon = network.chainId === POLYGON_CHAIN_ID;
         document.getElementById("networkWarning").style.display = isPolygon ? "none" : "block";
 
       } catch (err) {
@@ -162,7 +164,7 @@
           if (parts.length !== 2) continue;
 
           const [addr, amtStr] = parts;
-          if (!ethers.isAddress(addr)) {
+          if (!ethers.utils.isAddress(addr)) {
             throw new Error(`Invalid address: ${addr}`);
           }
           const amount = parseFloat(amtStr);
@@ -172,17 +174,17 @@
 
           recipients.push(addr);
           // BPOL has 18 decimals
-          amounts.push(ethers.parseUnits(amtStr, 18));
+          amounts.push(ethers.utils.parseUnits(amtStr, 18));
         }
 
         if (recipients.length === 0) {
           throw new Error("No valid recipients found.");
         }
 
-        // Cek jaringan lagi sebelum kirim
+        // Cek jaringan
         const network = await provider.getNetwork();
-        if (network.chainId !== 137) {
-          document.getElementById("status").innerText = "⚠️ Switch to Polygon Network in your wallet first!";
+        if (network.chainId !== POLYGON_CHAIN_ID) {
+          document.getElementById("status").innerText = "⚠️ Switch to Polygon Network first!";
           return;
         }
 
@@ -190,13 +192,13 @@
         document.getElementById("status").innerText = "⏳ Confirm transaction in your wallet...";
 
         const tx = await batchContract.batchTransfer(TOKEN_ADDRESS, recipients, amounts);
-        document.getElementById("status").innerText = `📦 Transaction sent! Hash: ${tx.hash.substring(0,10)}...`;
+        document.getElementById("status").innerText = `📦 Sent! Hash: ${tx.hash.substring(0,12)}...`;
 
         const receipt = await tx.wait();
         if (receipt.status === 1) {
-          document.getElementById("status").innerText = "✅ Airdrop successful! All tokens sent.";
+          document.getElementById("status").innerText = "✅ Airdrop successful!";
         } else {
-          document.getElementById("status").innerText = "❌ Transaction reverted.";
+          document.getElementById("status").innerText = "❌ Transaction failed.";
         }
 
       } catch (err) {
@@ -208,11 +210,10 @@
     document.getElementById("connectButton").onclick = connectWallet;
     document.getElementById("sendButton").onclick = sendTokens;
 
-    // Opsional: Deteksi perubahan jaringan
+    // Opsional: reload saat ganti jaringan
     if (window.ethereum) {
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
+      window.ethereum.on('chainChanged', () => window.location.reload());
+      window.ethereum.on('accountsChanged', () => window.location.reload());
     }
   </script>
 </body>
