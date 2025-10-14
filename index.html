@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Batch Token Sender</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      text-align: center;
+      padding: 30px;
+    }
+    input, textarea, button {
+      width: 90%;
+      max-width: 600px;
+      margin: 10px auto;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    textarea { height: 180px; }
+    button {
+      background-color: #8247e5;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #a46ff5;
+    }
+    .container {
+      background: #151515;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 800px;
+      margin: 0 auto;
+      box-shadow: 0 0 20px rgba(130,71,229,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Batch Token Sender 💎</h1>
+    <p>Send ERC20 tokens to multiple addresses in one transaction</p>
+    
+    <button id="connectButton">🔗 Connect Wallet</button>
+    <br><br>
+
+    <input type="text" id="contractAddress" placeholder="BatchSender Contract Address (0x...)" />
+    <input type="text" id="tokenAddress" placeholder="Token Address (0x...)" />
+    <br>
+
+    <textarea id="airdropList" placeholder="Paste address,amount per line. Example:
+0xabc...,1000
+0xdef...,2000
+0xghi...,500"></textarea>
+    <br>
+
+    <button id="sendButton">🚀 Send Tokens</button>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    let provider, signer, batchContract;
+
+    // ABI minimal dari kontrak BatchSender
+    const batchSenderAbi = [
+      "function batchTransfer(address token, address[] calldata recipients, uint256[] calldata amounts) external"
+    ];
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        document.getElementById("status").innerText = "✅ Wallet connected: " + await signer.getAddress();
+      } else {
+        alert("Please install MetaMask!");
+      }
+    }
+
+    async function sendTokens() {
+      try {
+        const contractAddress = document.getElementById("contractAddress").value.trim();
+        const tokenAddress = document.getElementById("tokenAddress").value.trim();
+        const listText = document.getElementById("airdropList").value.trim();
+        if (!contractAddress || !tokenAddress || !listText) return alert("Please fill all fields");
+
+        const lines = listText.split("\n").filter(l => l.trim() !== "");
+        const recipients = [];
+        const amounts = [];
+
+        for (const line of lines) {
+          const [addr, amt] = line.split(",").map(x => x.trim());
+          recipients.push(addr);
+          // Asumsi token decimals = 18
+          amounts.push(ethers.parseUnits(amt, 18));
+        }
+
+        batchContract = new ethers.Contract(contractAddress, batchSenderAbi, signer);
+        document.getElementById("status").innerText = "⏳ Sending transaction... please confirm in MetaMask";
+
+        const tx = await batchContract.batchTransfer(tokenAddress, recipients, amounts);
+        document.getElementById("status").innerText = "📦 Transaction sent: " + tx.hash;
+
+        const receipt = await tx.wait();
+        if (receipt.status === 1) {
+          document.getElementById("status").innerText = "✅ Success! Tx hash: " + tx.hash;
+        } else {
+          document.getElementById("status").innerText = "❌ Transaction failed";
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").innerText = "⚠️ Error: " + err.message;
+      }
+    }
+
+    document.getElementById("connectButton").onclick = connectWallet;
+    document.getElementById("sendButton").onclick = sendTokens;
+  </script>
+</body>
+</html>
