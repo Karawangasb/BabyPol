@@ -3,124 +3,217 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Batch Token Sender</title>
+  <title>BabyPol (BPOL) Airdrop Sender</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #0a0a0a;
-      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0f0f1b;
+      color: #e0e0ff;
       text-align: center;
-      padding: 30px;
-    }
-    input, textarea, button {
-      width: 90%;
-      max-width: 600px;
-      margin: 10px auto;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-    }
-    textarea { height: 180px; }
-    button {
-      background-color: #8247e5;
-      color: #fff;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    button:hover {
-      background-color: #a46ff5;
+      padding: 20px;
+      margin: 0;
     }
     .container {
-      background: #151515;
-      border-radius: 16px;
+      background: #1a1a2e;
+      border-radius: 20px;
       padding: 30px;
-      max-width: 800px;
-      margin: 0 auto;
-      box-shadow: 0 0 20px rgba(130,71,229,0.3);
+      max-width: 700px;
+      margin: 20px auto;
+      box-shadow: 0 0 25px rgba(130, 71, 229, 0.4);
+      border: 1px solid #2d2b55;
+    }
+    h1 {
+      color: #8247e5;
+      margin-bottom: 10px;
+    }
+    p.subtitle {
+      color: #aaa;
+      margin-bottom: 25px;
+    }
+    input, textarea, button {
+      width: 95%;
+      max-width: 600px;
+      margin: 12px auto;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #3a3a5a;
+      background: #25253a;
+      color: #fff;
+      box-sizing: border-box;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #8247e5;
+    }
+    textarea {
+      height: 200px;
+      resize: vertical;
+      font-family: monospace;
+    }
+    button {
+      background: linear-gradient(135deg, #8247e5, #6a30c2);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+    }
+    #status {
+      margin-top: 20px;
+      min-height: 24px;
+      font-size: 15px;
+      color: #ffd700;
+    }
+    .network-warning {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Batch Token Sender 💎</h1>
-    <p>Send ERC20 tokens to multiple addresses in one transaction</p>
-    
-    <button id="connectButton">🔗 Connect Wallet</button>
-    <br><br>
+    <h1>✨ BabyPol (BPOL) Airdrop Sender</h1>
+    <p class="subtitle">Send BPOL tokens to multiple addresses on Polygon</p>
 
-    <input type="text" id="contractAddress" placeholder="BatchSender Contract Address (0x...)" />
-    <input type="text" id="tokenAddress" placeholder="Token Address (0x...)" />
-    <br>
+    <button id="connectButton">🔗 Connect Wallet</button>
+    <p id="networkWarning" class="network-warning" style="display:none;">
+      ⚠️ Please switch to Polygon Network (Chain ID: 137)
+    </p>
+
+    <input type="text" id="contractAddress" 
+           value="0x1bd8fE458e3aDdFE17DF1720Ae34f274c3717a35"
+           placeholder="BatchSender Contract Address" readonly />
+
+    <input type="text" id="tokenAddress" 
+           value="0x3fb009dd27fbc4e2cf183b65279363967a1e8182"
+           placeholder="BabyPol (BPOL) Token Address" readonly />
 
     <textarea id="airdropList" placeholder="Paste address,amount per line. Example:
-0xabc...,1000
-0xdef...,2000
-0xghi...,500"></textarea>
-    <br>
+0xAbC123...,1000
+0xDef456...,2500
+0xGhi789...,500"></textarea>
 
-    <button id="sendButton">🚀 Send Tokens</button>
+    <button id="sendButton" disabled>🚀 Send BPOL Airdrop</button>
     <p id="status"></p>
   </div>
 
   <script>
-    let provider, signer, batchContract;
+    let provider, signer;
+    const POLYGON_CHAIN_ID = '0x89'; // 137 in hex
 
-    // ABI minimal dari kontrak BatchSender
+    // ABI dari BatchSender (hanya fungsi batchTransfer)
     const batchSenderAbi = [
       "function batchTransfer(address token, address[] calldata recipients, uint256[] calldata amounts) external"
     ];
 
+    const CONTRACT_ADDRESS = "0x1bd8fE458e3aDdFE17DF1720Ae34f274c3717a35";
+    const TOKEN_ADDRESS = "0x3fb009dd27fbc4e2cf183b65279363967a1e8182";
+
     async function connectWallet() {
-      if (window.ethereum) {
+      if (!window.ethereum) {
+        alert("Please install MetaMask or a compatible wallet!");
+        return;
+      }
+
+      try {
         provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
-        document.getElementById("status").innerText = "✅ Wallet connected: " + await signer.getAddress();
-      } else {
-        alert("Please install MetaMask!");
+        const address = await signer.getAddress();
+        document.getElementById("status").innerText = `✅ Connected: ${address.slice(0,6)}...${address.slice(-4)}`;
+        document.getElementById("sendButton").disabled = false;
+
+        // Cek jaringan
+        const network = await provider.getNetwork();
+        const isPolygon = network.chainId === 137;
+        document.getElementById("networkWarning").style.display = isPolygon ? "none" : "block";
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").innerText = "❌ Connection failed: " + (err.message || err);
       }
     }
 
     async function sendTokens() {
-      try {
-        const contractAddress = document.getElementById("contractAddress").value.trim();
-        const tokenAddress = document.getElementById("tokenAddress").value.trim();
-        const listText = document.getElementById("airdropList").value.trim();
-        if (!contractAddress || !tokenAddress || !listText) return alert("Please fill all fields");
+      const listText = document.getElementById("airdropList").value.trim();
+      if (!listText) {
+        alert("Please enter at least one recipient!");
+        return;
+      }
 
-        const lines = listText.split("\n").filter(l => l.trim() !== "");
+      try {
+        const lines = listText.split("\n").filter(line => line.trim() !== "");
         const recipients = [];
         const amounts = [];
 
         for (const line of lines) {
-          const [addr, amt] = line.split(",").map(x => x.trim());
+          const parts = line.split(",").map(x => x.trim());
+          if (parts.length !== 2) continue;
+
+          const [addr, amtStr] = parts;
+          if (!ethers.isAddress(addr)) {
+            throw new Error(`Invalid address: ${addr}`);
+          }
+          const amount = parseFloat(amtStr);
+          if (isNaN(amount) || amount <= 0) {
+            throw new Error(`Invalid amount: ${amtStr}`);
+          }
+
           recipients.push(addr);
-          // Asumsi token decimals = 18
-          amounts.push(ethers.parseUnits(amt, 18));
+          // BPOL has 18 decimals
+          amounts.push(ethers.parseUnits(amtStr, 18));
         }
 
-        batchContract = new ethers.Contract(contractAddress, batchSenderAbi, signer);
-        document.getElementById("status").innerText = "⏳ Sending transaction... please confirm in MetaMask";
+        if (recipients.length === 0) {
+          throw new Error("No valid recipients found.");
+        }
 
-        const tx = await batchContract.batchTransfer(tokenAddress, recipients, amounts);
-        document.getElementById("status").innerText = "📦 Transaction sent: " + tx.hash;
+        // Cek jaringan lagi sebelum kirim
+        const network = await provider.getNetwork();
+        if (network.chainId !== 137) {
+          document.getElementById("status").innerText = "⚠️ Switch to Polygon Network in your wallet first!";
+          return;
+        }
+
+        const batchContract = new ethers.Contract(CONTRACT_ADDRESS, batchSenderAbi, signer);
+        document.getElementById("status").innerText = "⏳ Confirm transaction in your wallet...";
+
+        const tx = await batchContract.batchTransfer(TOKEN_ADDRESS, recipients, amounts);
+        document.getElementById("status").innerText = `📦 Transaction sent! Hash: ${tx.hash.substring(0,10)}...`;
 
         const receipt = await tx.wait();
         if (receipt.status === 1) {
-          document.getElementById("status").innerText = "✅ Success! Tx hash: " + tx.hash;
+          document.getElementById("status").innerText = "✅ Airdrop successful! All tokens sent.";
         } else {
-          document.getElementById("status").innerText = "❌ Transaction failed";
+          document.getElementById("status").innerText = "❌ Transaction reverted.";
         }
+
       } catch (err) {
         console.error(err);
-        document.getElementById("status").innerText = "⚠️ Error: " + err.message;
+        document.getElementById("status").innerText = "⚠️ Error: " + (err.reason || err.message || String(err));
       }
     }
 
     document.getElementById("connectButton").onclick = connectWallet;
     document.getElementById("sendButton").onclick = sendTokens;
+
+    // Opsional: Deteksi perubahan jaringan
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
+    }
   </script>
 </body>
 </html>
