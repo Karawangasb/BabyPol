@@ -1,0 +1,197 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html>
+<html b:version='2' class='v2' expr:dir='data:blog.languageDirection' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+  <head>
+    <b:include data='blog' name='all-head-content'/>
+
+    <meta charset='UTF-8'/>
+    <meta content='width=device-width, initial-scale=1.0' name='viewport'/>
+    <title>BabyPol ($BPOL) – Born from Polygon, Powered by Memes</title>
+
+    <script src='https://cdn.tailwindcss.com'></script>
+    <link href='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/logo.png' rel='icon' type='image/png'/>
+
+    <b:skin><![CDATA[
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+      body { background: linear-gradient(180deg, #ffffff 0%, #f6f3ff 100%); color: #333; font-family: 'Inter', sans-serif; }
+    ]]></b:skin>
+  </head>
+
+  <body class='text-gray-800 overflow-x-hidden'>
+    <b:section id='main' showaddelement='yes'>
+      <b:widget id='HTML1' locked='false' title='BabyPol' type='HTML' version='1'>
+        <b:widget-settings>
+          <b:widget-setting name='content'/>
+        </b:widget-settings>
+        <b:includable id='main'>
+          <div class='widget-content'>
+
+            <!-- Header -->
+            <header class='fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-purple-100 shadow-sm'>
+              <div class='container mx-auto px-6 py-4 flex justify-between items-center'>
+                <div class='flex items-center gap-3'>
+                  <img alt='BabyPol Logo' class='h-10 w-10' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/logo.png'/>
+                  <h1 class='text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-400 bg-clip-text text-transparent'>BabyPol</h1>
+                </div>
+                <nav class='hidden md:flex space-x-8 text-sm font-medium'>
+                  <a class='hover:text-purple-500 transition-colors' href='#token'>Token</a>
+                  <a class='hover:text-purple-500 transition-colors' href='#tokenomics'>Tokenomics</a>
+                  <a class='hover:text-purple-500 transition-colors' href='#roadmap'>Roadmap</a>
+                  <a class='hover:text-purple-500 transition-colors' href='#links'>Links</a>
+                </nav>
+                <button class='md:hidden text-purple-600' id='mobile-menu-btn'>
+                  <svg class='h-6 w-6' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path d='M4 6h16M4 12h16M4 18h16' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/></svg>
+                </button>
+              </div>
+            </header>
+
+            <div class='md:hidden hidden bg-white border-b border-gray-200 px-6 py-4 space-y-4' id='mobile-menu'>
+              <a class='block py-2 hover:text-purple-500' href='#token'>Token</a>
+              <a class='block py-2 hover:text-purple-500' href='#tokenomics'>Tokenomics</a>
+              <a class='block py-2 hover:text-purple-500' href='#roadmap'>Roadmap</a>
+              <a class='block py-2 hover:text-purple-500' href='#links'>Links</a>
+            </div>
+
+            <!-- Hero -->
+            <section class='pt-28 pb-16 text-center bg-gradient-to-b from-purple-50 to-white'>
+              <div class='container mx-auto px-6'>
+                <h2 class='text-4xl md:text-6xl font-bold mb-4 leading-tight fade-in-up'>
+                  <span class='bg-gradient-to-r from-purple-500 via-pink-400 to-indigo-500 bg-clip-text text-transparent'>BabyPol ($BPOL)</span>
+                </h2>
+                <p class='text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8 fade-in-up'>
+                  Born from Polygon, powered by memes. A community-driven token that unites fun, creativity, and love for the purple chain.
+                </p>
+                <div class='flex flex-wrap justify-center gap-4 fade-in-up'>
+                  <a href='https://x.com/Babypol_bpol' target='_blank' class='px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-400 text-white font-semibold rounded-full shadow hover:shadow-lg transition'>Join Our Community</a>
+                  <a href='https://polygonscan.com/token/0x3fb009dd27fbc4e2cf183b65279363967a1e8182' target='_blank' class='px-8 py-3 border border-purple-300 text-purple-600 font-semibold rounded-full hover:bg-purple-50 transition'>View on PolygonScan</a>
+                </div>
+              </div>
+            </section>
+
+            <!-- Token Info -->
+            <section id='token' class='px-6 py-20 max-w-6xl mx-auto'>
+              <div class='grid md:grid-cols-2 gap-10 items-center'>
+                <div>
+                  <h3 class='text-3xl font-bold mb-6 text-purple-600'>Token Information</h3>
+                  <ul class='space-y-2 text-gray-700'>
+                    <li><strong>Name:</strong> BabyPol</li>
+                    <li><strong>Symbol:</strong> BPOL</li>
+                    <li><strong>Network:</strong> Polygon (PoS)</li>
+                    <li><strong>Total Supply:</strong> 100,000,000,000,000 BPOL</li>
+                    <li><strong>Type:</strong> Community Meme Token</li>
+                  </ul>
+                </div>
+                <div class='bg-white p-6 rounded-2xl shadow border border-gray-100 text-center'>
+                  <h4 class='text-lg font-semibold text-purple-600 mb-2'>Contract Address</h4>
+                  <p class='text-sm font-mono text-gray-600 mb-4'>0x3fb009dd27fbc4e2cf183b65279363967a1e8182</p>
+                  <button class='px-5 py-2 bg-purple-500 text-white rounded-full hover:bg-purple-400 transition' onclick='copyContract()'>Copy Contract</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Tokenomics -->
+            <section id='tokenomics' class='px-6 py-20 bg-gradient-to-b from-white to-purple-50'>
+              <h3 class='text-3xl font-bold text-center mb-12 text-purple-600'>Tokenomics Distribution</h3>
+              <div class='grid md:grid-cols-3 gap-8 text-center'>
+                <div class='bg-white border border-gray-100 p-8 rounded-2xl shadow-sm hover:shadow-md transition'>
+                  <h4 class='text-4xl font-bold text-purple-500 mb-2'>40%</h4>
+                  <p class='font-medium text-gray-700'>Liquidity Pool</p>
+                </div>
+                <div class='bg-white border border-gray-100 p-8 rounded-2xl shadow-sm hover:shadow-md transition'>
+                  <h4 class='text-4xl font-bold text-purple-500 mb-2'>20%</h4>
+                  <p class='font-medium text-gray-700'>Airdrops (1 &amp; 2)</p>
+                </div>
+                <div class='bg-white border border-gray-100 p-8 rounded-2xl shadow-sm hover:shadow-md transition'>
+                  <h4 class='text-4xl font-bold text-purple-500 mb-2'>15%</h4>
+                  <p class='font-medium text-gray-700'>CEX/DEX Listing Reserve</p>
+                </div>
+                <div class='bg-white border border-gray-100 p-8 rounded-2xl shadow-sm hover:shadow-md transition'>
+                  <h4 class='text-4xl font-bold text-purple-500 mb-2'>10%</h4>
+                  <p class='font-medium text-gray-700'>Development &amp; Maintenance</p>
+                </div>
+                <div class='bg-white border border-gray-100 p-8 rounded-2xl shadow-sm hover:shadow-md transition'>
+                  <h4 class='text-4xl font-bold text-purple-500 mb-2'>10%</h4>
+                  <p class='font-medium text-gray-700'>Marketing</p>
+                </div>
+                <div class='bg-white border border-gray-100 p-8 rounded-2xl shadow-sm hover:shadow-md transition'>
+                  <h4 class='text-4xl font-bold text-purple-500 mb-2'>5%</h4>
+                  <p class='font-medium text-gray-700'>Donations</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Roadmap -->
+            <section id='roadmap' class='px-6 py-20 max-w-5xl mx-auto'>
+              <h3 class='text-3xl font-bold text-center mb-12 text-purple-600'>Roadmap</h3>
+              <div class='space-y-10'>
+                <div class='border-l-4 border-purple-400 pl-6'>
+                  <h4 class='text-xl font-bold text-purple-600 mb-2'>Phase 1 – Launch &amp; Foundation</h4>
+                  <ul class='list-disc list-inside text-gray-700'>
+                    <li>Official launch on Polygon</li>
+                    <li>First community airdrop and meme campaign</li>
+                    <li>Establish brand and social channels</li>
+                  </ul>
+                </div>
+                <div class='border-l-4 border-purple-400 pl-6'>
+                  <h4 class='text-xl font-bold text-purple-600 mb-2'>Phase 2 – Growth &amp; Collaboration</h4>
+                  <ul class='list-disc list-inside text-gray-700'>
+                    <li>Initial DEX listing</li>
+                    <li>Partnerships and meme contests</li>
+                    <li>Marketing across Polygon ecosystem</li>
+                  </ul>
+                </div>
+                <div class='border-l-4 border-purple-400 pl-6'>
+                  <h4 class='text-xl font-bold text-purple-600 mb-2'>Phase 3 – Utility &amp; Governance</h4>
+                  <ul class='list-disc list-inside text-gray-700'>
+                    <li>DAO voting and community-driven direction</li>
+                    <li>Charity and donation programs</li>
+                  </ul>
+                </div>
+                <div class='border-l-4 border-purple-400 pl-6'>
+                  <h4 class='text-xl font-bold text-purple-600 mb-2'>Phase 4 – Long-Term Vision</h4>
+                  <ul class='list-disc list-inside text-gray-700'>
+                    <li>Community-driven innovation</li>
+                    <li>Integration with other Polygon meme projects</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <!-- Links -->
+            <section id='links' class='px-6 py-20 bg-gradient-to-b from-purple-50 to-white text-center'>
+              <h3 class='text-3xl font-bold mb-12 text-purple-600'>Join Our Community</h3>
+              <div class='flex flex-wrap justify-center gap-6'>
+                <a class='px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-400 text-white font-semibold rounded-full shadow hover:opacity-90 transition' href='https://x.com/Babypol_bpol' target='_blank'>Twitter/X</a>
+                <a class='px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-400 text-white font-semibold rounded-full shadow hover:opacity-90 transition' href='mailto:contact@babypol.fun'>Email</a>
+                <a class='px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-400 text-white font-semibold rounded-full shadow hover:opacity-90 transition' href='https://www.babypol.fun/' target='_blank'>Website</a>
+              </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class='py-10 bg-white text-center text-gray-500 text-sm border-t border-gray-100'>
+              <p>© 2025 BabyPol ($BPOL) – Born from Polygon, Powered by Memes</p>
+              <p class='mt-2'>Contract: <code class='bg-purple-50 px-2 py-1 rounded text-purple-600'>0x3fb009dd27fbc4e2cf183b65279363967a1e8182</code></p>
+            </footer>
+
+            <script>
+              document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+                const menu = document.getElementById('mobile-menu');
+                menu.classList.toggle('hidden');
+              });
+
+              function copyContract() {
+                navigator.clipboard.writeText('0x3fb009dd27fbc4e2cf183b65279363967a1e8182');
+                alert('Contract address copied!');
+              }
+            </script>
+
+          </div>
+        </b:includable>
+      </b:widget>
+    </b:section>
+  </body>
+</html>
