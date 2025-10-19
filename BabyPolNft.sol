@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 /*
   BabyPolNFT
   - ERC-721 NFT contract compatible with OpenSea metadata conventions
-  - Owner (deployer) can mint via safeMint(address to, string tokenURI)
+  - Owner (deployer) can mint via safeMint(address to, string uri)
   - Supports setting baseURI and contractURI (for OpenSea collection metadata)
   - Implements EIP-2981 Royalty Standard (default 5%)
   - Uses OpenZeppelin Contracts
@@ -27,32 +27,39 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
     address private _royaltyReceiver;
     uint96 private _royaltyFeeBasisPoints = 500; // 5% default (500 basis points)
 
+    mapping(uint256 => string) private _tokenURIs;
+
     event BaseURISet(string baseURI);
     event ContractURISet(string contractURI);
     event RoyaltyInfoSet(address receiver, uint96 feeBasisPoints);
+    event Minted(address indexed to, uint256 indexed tokenId, string uri);
 
-    constructor(string memory name_, string memory symbol_, string memory baseURI_, string memory contractURI_) ERC721(name_, symbol_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        string memory baseURI_,
+        string memory contractURI_
+    ) ERC721(name_, symbol_) {
         _baseTokenURI = baseURI_;
         _contractURI = contractURI_;
         _tokenIdCounter.increment();
         _royaltyReceiver = msg.sender;
     }
 
-    function safeMint(address to, string calldata tokenURI) external onlyOwner returns (uint256) {
+    function safeMint(address to, string calldata uri) external onlyOwner returns (uint256) {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
-        if(bytes(tokenURI).length > 0) {
-            _tokenURIs[tokenId] = tokenURI;
+        if (bytes(uri).length > 0) {
+            _tokenURIs[tokenId] = uri;
         }
+        emit Minted(to, tokenId, uri);
         return tokenId;
     }
 
-    function safeMintToSelf(string calldata tokenURI) external onlyOwner returns (uint256) {
-        return safeMint(_msgSender(), tokenURI);
+    function safeMintToSelf(string calldata uri) external onlyOwner returns (uint256) {
+        return this.safeMint(_msgSender(), uri);
     }
-
-    mapping(uint256 => string) private _tokenURIs;
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721: URI query for nonexistent token");
@@ -60,11 +67,11 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
         string memory _tokenURI = _tokenURIs[tokenId];
         string memory base = _baseTokenURI;
 
-        if(bytes(_tokenURI).length > 0) {
+        if (bytes(_tokenURI).length > 0) {
             return _tokenURI;
         }
 
-        if(bytes(base).length == 0) {
+        if (bytes(base).length == 0) {
             return "";
         }
 
@@ -110,7 +117,10 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
 
     // --- Royalty (EIP-2981) ---
 
-    function royaltyInfo(uint256, uint256 salePrice) external view override returns (address receiver, uint256 royaltyAmount) {
+    function royaltyInfo(
+        uint256,
+        uint256 salePrice
+    ) external view override returns (address receiver, uint256 royaltyAmount) {
         receiver = _royaltyReceiver;
         royaltyAmount = (salePrice * _royaltyFeeBasisPoints) / 10000;
     }
@@ -122,7 +132,13 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
         emit RoyaltyInfoSet(receiver, feeBasisPoints);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC721, IERC165)
+        returns (bool)
+    {
         return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 }
