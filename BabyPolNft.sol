@@ -12,6 +12,7 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
 
     string private _contractURI;
     string public projectWebsite = "https://www.babypol.fun/";
+    string public projectX = "https://x.com/Babypol_bpol";
 
     // Royalty info
     address private _royaltyReceiver;
@@ -20,13 +21,14 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
     event ContractURISet(string contractURI);
     event RoyaltyInfoSet(address receiver, uint96 feeBasisPoints);
     event ProjectWebsiteSet(string website);
+    event ProjectXSet(string xLink);
     event Minted(address indexed to, uint256 indexed tokenId, string uri);
 
     constructor(
         string memory name_,
         string memory symbol_,
         string memory contractURI_
-    ) ERC721(name_, symbol_) {
+    ) ERC721(name_, symbol_) Ownable() {
         _contractURI = contractURI_;
         _tokenIdCounter.increment();
         _royaltyReceiver = msg.sender;
@@ -59,6 +61,11 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
         emit ProjectWebsiteSet(newWebsite);
     }
 
+    function setProjectX(string calldata newXLink) external onlyOwner {
+        projectX = newXLink;
+        emit ProjectXSet(newXLink);
+    }
+
     // Royalty (EIP-2981)
     function royaltyInfo(uint256, uint256 salePrice) external view override returns (address receiver, uint256 royaltyAmount) {
         receiver = _royaltyReceiver;
@@ -72,7 +79,13 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
         emit RoyaltyInfoSet(receiver, feeBasisPoints);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC721URIStorage, IERC165)
+        returns (bool)
+    {
         return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 }
