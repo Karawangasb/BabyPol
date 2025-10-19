@@ -9,6 +9,7 @@ pragma solidity ^0.8.20;
   - Implements EIP-2981 Royalty Standard (default 5%)
   - Uses OpenZeppelin Contracts
   - No burn function to ensure immutability
+  - Includes public project website: https://www.babypol.fun/
 */
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -23,6 +24,9 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
     string private _baseTokenURI;
     string private _contractURI;
 
+    // Project info
+    string public projectWebsite = "https://www.babypol.fun/";
+
     // Royalty info
     address private _royaltyReceiver;
     uint96 private _royaltyFeeBasisPoints = 500; // 5% default (500 basis points)
@@ -32,6 +36,7 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
     event BaseURISet(string baseURI);
     event ContractURISet(string contractURI);
     event RoyaltyInfoSet(address receiver, uint96 feeBasisPoints);
+    event ProjectWebsiteSet(string website);
     event Minted(address indexed to, uint256 indexed tokenId, string uri);
 
     constructor(
@@ -115,8 +120,13 @@ contract BabyPolNFT is ERC721, Ownable, IERC2981 {
         return _baseTokenURI;
     }
 
-    // --- Royalty (EIP-2981) ---
+    // --- Project Info ---
+    function setProjectWebsite(string calldata newWebsite) external onlyOwner {
+        projectWebsite = newWebsite;
+        emit ProjectWebsiteSet(newWebsite);
+    }
 
+    // --- Royalty (EIP-2981) ---
     function royaltyInfo(
         uint256,
         uint256 salePrice
