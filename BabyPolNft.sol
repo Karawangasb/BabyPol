@@ -28,12 +28,13 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
         string memory name_,
         string memory symbol_,
         string memory contractURI_
-    ) ERC721(name_, symbol_) Ownable() {
+    ) ERC721(name_, symbol_) Ownable(msg.sender) {
         _contractURI = contractURI_;
         _tokenIdCounter.increment();
         _royaltyReceiver = msg.sender;
     }
 
+    // --- Minting ---
     function safeMint(address to, string calldata uri) external onlyOwner returns (uint256) {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
@@ -47,6 +48,7 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
         return this.safeMint(msg.sender, uri);
     }
 
+    // --- Contract info ---
     function contractURI() external view returns (string memory) {
         return _contractURI;
     }
@@ -66,7 +68,7 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
         emit ProjectXSet(newXLink);
     }
 
-    // Royalty (EIP-2981)
+    // --- Royalty (EIP-2981) ---
     function royaltyInfo(uint256, uint256 salePrice) external view override returns (address receiver, uint256 royaltyAmount) {
         receiver = _royaltyReceiver;
         royaltyAmount = (salePrice * _royaltyFeeBasisPoints) / 10000;
@@ -79,6 +81,7 @@ contract BabyPolNFT is ERC721URIStorage, Ownable, IERC2981 {
         emit RoyaltyInfoSet(receiver, feeBasisPoints);
     }
 
+    // --- Interface support ---
     function supportsInterface(bytes4 interfaceId)
         public
         view
