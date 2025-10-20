@@ -32,10 +32,11 @@ contract PriceChecker {
     /// @return quickPrice Jumlah WPOL yang bisa didapat di QuickSwap
     /// @return sushiPrice Jumlah WPOL yang bisa didapat di SushiSwap
     function getDexPrices(uint amountIn)
-        external
+        public
         view
         returns (uint quickPrice, uint sushiPrice)
     {
+        // Deklarasi array path di dalam fungsi
         address ;
         path[0] = USDT;
         path[1] = WPOL;
@@ -57,6 +58,7 @@ contract PriceChecker {
 
     /// @notice Helper view untuk lihat harga 1 USDT (default)
     function getPrices1USDT() external view returns (uint quick, uint sushi) {
-        return getDexPrices(1e6); // 1 USDT (6 desimal)
+        // Panggil fungsi utama dengan 1 USDT (6 desimal)
+        (quick, sushi) = getDexPrices(1e6);
     }
 }
