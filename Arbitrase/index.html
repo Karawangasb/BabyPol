@@ -1,136 +1,118 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simulasi Arbitrase USDT antar DEX (Polygon)</title>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <meta charset="UTF-8">
+  <title>POL/USDT Price — On-Chain Arbitrage Checker</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: #f5f6fa;
-      color: #222;
-      padding: 20px;
-    }
-    h2 { color: #4f46e5; }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: center;
-    }
-    th {
-      background: #4f46e5;
-      color: white;
-    }
-    tr:nth-child(even) {
+      font-family: Arial, sans-serif;
       background: #f9f9f9;
+      color: #333;
+      text-align: center;
+      margin-top: 50px;
     }
-    .highlight-max { background: #c8f7c5; font-weight: bold; }
-    .highlight-min { background: #f8c5c5; font-weight: bold; }
-    #loading { color: #888; margin-top: 10px; }
+    button {
+      background: #6200ee;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:hover {
+      background: #4500b5;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: inline-block;
+      padding: 20px;
+      margin-top: 20px;
+      min-width: 300px;
+    }
   </style>
 </head>
 <body>
-  <h2>🔁 Simulasi Arbitrase USDT antar DEX (Polygon)</h2>
-  <button onclick="checkPrices()">Cek Harga</button>
-  <p id="loading"></p>
-  <table id="priceTable">
-    <thead>
-      <tr><th>DEX</th><th>Harga WMATIC per 1 USDT</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <h2>🔗 POL / USDT — On-Chain Price Comparator</h2>
+  <p>Compare prices from QuickSwap & SushiSwap directly on Polygon blockchain</p>
+
+  <button id="connect">Connect MetaMask</button>
+  <button id="check">Check Prices</button>
+
+  <div class="card">
+    <h3>QuickSwap</h3>
+    <p id="quickPrice">-</p>
+  </div>
+
+  <div class="card">
+    <h3>SushiSwap</h3>
+    <p id="sushiPrice">-</p>
+  </div>
+
+  <div class="card" style="background:#eef7ff;">
+    <h3>📈 Potential Arbitrage</h3>
+    <p id="diff">-</p>
+  </div>
 
   <script>
-    const dexList = ["quickswap", "sushiswap", "apeswap", "dfyn", "jetswap"];
-    const tokenPair = { base: "USDT", quote: "WMATIC" };
+    const QUICKSWAP_ROUTER = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
+    const SUSHISWAP_ROUTER = "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506";
+    const WPOL = "0xA9C1255D8A4877d1E9a2b7Dc9d8f27E67F4E3Ee7";
+    const USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 
-    // ambil harga dari tiap DEX
-    async function getPriceFromDEX(dex) {
+    const ABI = [
+      "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)"
+    ];
+
+    let provider;
+    let signer;
+
+    // Hubungkan MetaMask
+    document.getElementById("connect").onclick = async () => {
+      if (!window.ethereum) return alert("Please install MetaMask first.");
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      const address = await signer.getAddress();
+      alert("Connected: " + address);
+    };
+
+    // Cek harga POL/USDT
+    document.getElementById("check").onclick = async () => {
+      if (!provider) return alert("Please connect MetaMask first.");
       try {
-        switch (dex) {
-          case "quickswap":
-            const quick = await axios.get("https://api.quickswap.exchange/v1/pairs");
-            const qpair = quick.data.find(p => 
-              (p.token0.symbol === "USDT" && p.token1.symbol === "WMATIC") ||
-              (p.token0.symbol === "WMATIC" && p.token1.symbol === "USDT")
-            );
-            if (!qpair) return null;
-            return parseFloat(qpair.token0.symbol === "USDT" ? qpair.token1Price : qpair.token0Price);
+        const routerQuick = new ethers.Contract(QUICKSWAP_ROUTER, ABI, provider);
+        const routerSushi = new ethers.Contract(SUSHISWAP_ROUTER, ABI, provider);
 
-          case "sushiswap":
-            const sushi = await axios.get("https://api.sushi.com/price/v1/137");
-            const susPrice = sushi.data["WMATIC"] / sushi.data["USDT"];
-            return susPrice;
+        const amountIn = ethers.utils.parseUnits("1", 18); // 1 POL
+        const path = [WPOL, USDT];
 
-          case "apeswap":
-            const ape = await axios.get("https://api.apeswap.finance/tokens");
-            const apeUSDT = ape.data.find(t => t.symbol === "USDT");
-            const apeWMATIC = ape.data.find(t => t.symbol === "WMATIC");
-            if (!apeUSDT || !apeWMATIC) return null;
-            return apeWMATIC.price / apeUSDT.price;
+        // Ambil harga QuickSwap
+        const quickAmounts = await routerQuick.getAmountsOut(amountIn, path);
+        const quickPrice = Number(ethers.utils.formatUnits(quickAmounts[1], 6));
 
-          case "dfyn":
-            const dfyn = await axios.get("https://api.dfyn.network/tokens");
-            const dfynUSDT = dfyn.data.find(t => t.symbol === "USDT");
-            const dfynWMATIC = dfyn.data.find(t => t.symbol === "WMATIC");
-            if (!dfynUSDT || !dfynWMATIC) return null;
-            return dfynWMATIC.price / dfynUSDT.price;
+        // Ambil harga SushiSwap
+        const sushiAmounts = await routerSushi.getAmountsOut(amountIn, path);
+        const sushiPrice = Number(ethers.utils.formatUnits(sushiAmounts[1], 6));
 
-          case "jetswap":
-            const jet = await axios.get("https://api.jetswap.finance/pairs");
-            const jpair = jet.data.find(p => 
-              (p.token0.symbol === "USDT" && p.token1.symbol === "WMATIC") ||
-              (p.token0.symbol === "WMATIC" && p.token1.symbol === "USDT")
-            );
-            if (!jpair) return null;
-            return parseFloat(jpair.token0.symbol === "USDT" ? jpair.token1Price : jpair.token0Price);
+        // Hitung selisih
+        const diff = ((quickPrice - sushiPrice) / sushiPrice) * 100;
 
-          default:
-            return null;
-        }
-      } catch (e) {
-        return null;
+        // Tampilkan hasil
+        document.getElementById("quickPrice").innerText = `1 POL = ${quickPrice.toFixed(4)} USDT`;
+        document.getElementById("sushiPrice").innerText = `1 POL = ${sushiPrice.toFixed(4)} USDT`;
+        document.getElementById("diff").innerText =
+          `Difference: ${diff.toFixed(3)}% (${diff > 0 ? "QuickSwap higher" : "SushiSwap higher"})`;
+
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching prices. Check network or try again.");
       }
-    }
-
-    async function checkPrices() {
-      const tbody = document.querySelector("#priceTable tbody");
-      const loading = document.getElementById("loading");
-      tbody.innerHTML = "";
-      loading.textContent = "⏳ Mengambil data harga...";
-
-      const results = await Promise.all(dexList.map(dex => getPriceFromDEX(dex)));
-
-      let min = Infinity, max = -Infinity;
-      for (const p of results) {
-        if (p) {
-          min = Math.min(min, p);
-          max = Math.max(max, p);
-        }
-      }
-
-      dexList.forEach((dex, i) => {
-        const price = results[i];
-        const row = document.createElement("tr");
-        if (price === null) {
-          row.innerHTML = `<td>${dex}</td><td>❌ Tidak tersedia</td>`;
-        } else {
-          const cls = price === min ? "highlight-min" : price === max ? "highlight-max" : "";
-          row.innerHTML = `<td>${dex}</td><td class="${cls}">${price.toFixed(6)}</td>`;
-        }
-        tbody.appendChild(row);
-      });
-
-      loading.textContent = "✅ Selesai memuat harga.";
-    }
+    };
   </script>
 </body>
 </html>
