@@ -2,60 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>POL Arbitrage — Multi Pair (USDT / WETH / BNB / BTC)</title>
+  <title>POL Arbitrage Checker</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body style="font-family: Arial; margin: 20px;">
-  <h2>POL Arbitrage — Multi Pair Checker (QuickSwap, SushiSwap, MeshSwap)</h2>
-
-  <label>Choose Pair:</label>
-  <select id="pair">
-    <option value="USDT">POL / USDT</option>
-    <option value="WETH">POL / WETH</option>
-    <option value="BNB">POL / BNB</option>
-    <option value="SOL">POL / BTC</option>
-  </select>
-  <br><br>
-
+  <h2>POL Price Comparator — 2-Way Arbitrage (USDT & WETH)</h2>
   <button id="connect">Connect MetaMask</button>
   <button id="check">Check Prices</button>
 
   <div style="margin-top:20px;">
-    <h3>QuickSwap:</h3>
-    <p>Sell POL → <span id="quote1">-</span>: <span id="quick_sell">-</span></p>
-    <p>Buy POL ← <span id="quote2">-</span>: <span id="quick_buy">-</span></p>
-
-    <h3>SushiSwap:</h3>
-    <p>Sell POL → <span id="quote3">-</span>: <span id="sushi_sell">-</span></p>
-    <p>Buy POL ← <span id="quote4">-</span>: <span id="sushi_buy">-</span></p>
-
-    <h3>MeshSwap:</h3>
-    <p>Sell POL → <span id="quote5">-</span>: <span id="mesh_sell">-</span></p>
-    <p>Buy POL ← <span id="quote6">-</span>: <span id="mesh_buy">-</span></p>
+    <h3>POL / USDT</h3>
+    <p>QuickSwap Sell → USDT: <span id="quick_sell_usdt">-</span></p>
+    <p>QuickSwap Buy ← USDT: <span id="quick_buy_usdt">-</span></p>
+    <p>SushiSwap Sell → USDT: <span id="sushi_sell_usdt">-</span></p>
+    <p>SushiSwap Buy ← USDT: <span id="sushi_buy_usdt">-</span></p>
+    <p>MeshSwap Sell → USDT: <span id="mesh_sell_usdt">-</span></p>
+    <p>MeshSwap Buy ← USDT: <span id="mesh_buy_usdt">-</span></p>
+    <p>Arbitrage: <span id="arb_usdt">-</span></p>
 
     <hr>
-    <h3>Arbitrage Opportunities:</h3>
-    <p id="arb">-</p>
+
+    <h3>POL / WETH</h3>
+    <p>QuickSwap Sell → WETH: <span id="quick_sell_weth">-</span></p>
+    <p>QuickSwap Buy ← WETH: <span id="quick_buy_weth">-</span></p>
+    <p>SushiSwap Sell → WETH: <span id="sushi_sell_weth">-</span></p>
+    <p>SushiSwap Buy ← WETH: <span id="sushi_buy_weth">-</span></p>
+    <p>MeshSwap Sell → WETH: <span id="mesh_sell_weth">-</span></p>
+    <p>MeshSwap Buy ← WETH: <span id="mesh_buy_weth">-</span></p>
+    <p>Arbitrage: <span id="arb_weth">-</span></p>
   </div>
 
   <script>
-    // DEX Routers
-    const QUICKSWAP = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
-    const SUSHISWAP = "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506";
-    const MESHSWAP  = "0x10f4A785F458Bc144e3706575924889954946639";
-
-    // Polygon token addresses
-    const TOKENS = {
-      POL:  "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", // Wrapped POL (WMATIC)
-      USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-      WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
-      BNB:  "0x3BA4c387f786bFEE076A58914F5Bd38d668B42c3",
-      BTC:  "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+    const DEXES = {
+      QuickSwap: "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
+      SushiSwap: "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506",
+      MeshSwap:  "0x10f4A785F458Bc144e3706575924889954946639"
     };
 
-    const ABI = [
-      "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)"
-    ];
+    const POL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"; // WMATIC
+    const USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
+    const WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619";
+
+    const ABI = ["function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)"];
 
     let provider, signer;
 
@@ -67,80 +55,73 @@
       alert("Connected to MetaMask!");
     };
 
+    async function getPrices(amountIn, path) {
+      const results = {};
+      for (let [name, addr] of Object.entries(DEXES)) {
+        const contract = new ethers.Contract(addr, ABI, provider);
+        const out = await contract.getAmountsOut(amountIn, path);
+        results[name] = out[out.length - 1];
+      }
+      return results;
+    }
+
+    function displayPrices(prices, decimals, prefix, inverse=false) {
+      const formatted = {};
+      for (let [dex, val] of Object.entries(prices)) {
+        let price = inverse 
+          ? 1 / parseFloat(ethers.utils.formatUnits(val, decimals))
+          : parseFloat(ethers.utils.formatUnits(val, decimals));
+        document.getElementById(`${prefix}_${dex.toLowerCase()}`).innerText = price.toFixed(6) + (inverse ? " POL" : (decimals===6 ? " USDT" : " WETH"));
+        formatted[dex] = price;
+      }
+      return formatted;
+    }
+
+    function calcArb(sellPrices, buyPrices) {
+      const bestSell = Object.entries(sellPrices).reduce((a,b)=>a[1]>b[1]?a:b);
+      const bestBuy  = Object.entries(buyPrices).reduce((a,b)=>a[1]<b[1]?a:b);
+      const diffPct  = ((bestSell[1]-bestBuy[1])/bestBuy[1])*100;
+      return diffPct>0.05 
+        ? `Buy on ${bestBuy[0]}, Sell on ${bestSell[0]} → Potential profit ≈ ${diffPct.toFixed(3)}%`
+        : "No significant arbitrage opportunity";
+    }
+
     document.getElementById("check").onclick = async () => {
       if (!provider) return alert("Please connect MetaMask first");
-
-      const pair = document.getElementById("pair").value;
-      const quoteToken = TOKENS[pair];
-      const POL = TOKENS.POL;
-
-      // Update label
-      document.getElementById("quote1").innerText =
-      document.getElementById("quote2").innerText =
-      document.getElementById("quote3").innerText =
-      document.getElementById("quote4").innerText =
-      document.getElementById("quote5").innerText =
-      document.getElementById("quote6").innerText = pair;
-
       try {
-        const quick = new ethers.Contract(QUICKSWAP, ABI, provider);
-        const sushi = new ethers.Contract(SUSHISWAP, ABI, provider);
-        const mesh  = new ethers.Contract(MESHSWAP,  ABI, provider);
+        const amountPOL = ethers.utils.parseEther("1");
+        const amountUSDT = ethers.utils.parseUnits("1", 6);
+        const amountWETH = ethers.utils.parseEther("1");
 
-        const amountPOL = ethers.utils.parseEther("1"); // 1 POL
-        const amountQuote = ethers.utils.parseEther("1"); // assume 18 decimals
+        // POL/USDT
+        const sellUSDT = await getPrices(amountPOL, [POL, USDT]);
+        const buyUSDT  = await getPrices(amountUSDT, [USDT, POL]);
+        const sellFormattedUSDT = displayPrices(sellUSDT, 6, "quick_sell_usdt"); // nanti diganti sesuai
+        const buyFormattedUSDT  = displayPrices(buyUSDT, 18, "quick_buy_usdt", true);
 
-        // Jalur POL -> quote (jual)
-        const pathSell = [POL, quoteToken];
-        // Jalur quote -> POL (beli)
-        const pathBuy = [quoteToken, POL];
+        const sellPricesUSDT = {};
+        const buyPricesUSDT  = {};
+        for (let dex of Object.keys(DEXES)) { 
+          sellPricesUSDT[dex] = parseFloat(ethers.utils.formatUnits(sellUSDT[dex],6));
+          buyPricesUSDT[dex]  = 1 / parseFloat(ethers.utils.formatEther(buyUSDT[dex]));
+        }
+        document.getElementById("arb_usdt").innerText = calcArb(sellPricesUSDT,buyPricesUSDT);
 
-        const [qSell, qBuy, sSell, sBuy, mSell, mBuy] = await Promise.all([
-          quick.getAmountsOut(amountPOL, pathSell),
-          quick.getAmountsOut(amountQuote, pathBuy),
-          sushi.getAmountsOut(amountPOL, pathSell),
-          sushi.getAmountsOut(amountQuote, pathBuy),
-          mesh.getAmountsOut(amountPOL, pathSell),
-          mesh.getAmountsOut(amountQuote, pathBuy)
-        ]);
+        // POL/WETH
+        const sellWETH = await getPrices(amountPOL, [POL, WETH]);
+        const buyWETH  = await getPrices(amountWETH, [WETH, POL]);
+        const sellFormattedWETH = displayPrices(sellWETH, 18, "quick_sell_weth");
+        const buyFormattedWETH  = displayPrices(buyWETH, 18, "quick_buy_weth", true);
 
-        const decimals = (pair === "USDT") ? 6 : 18;
+        const sellPricesWETH = {};
+        const buyPricesWETH  = {};
+        for (let dex of Object.keys(DEXES)) { 
+          sellPricesWETH[dex] = parseFloat(ethers.utils.formatEther(sellWETH[dex]));
+          buyPricesWETH[dex]  = 1 / parseFloat(ethers.utils.formatEther(buyWETH[dex]));
+        }
+        document.getElementById("arb_weth").innerText = calcArb(sellPricesWETH,buyPricesWETH);
 
-        const quickSell = parseFloat(ethers.utils.formatUnits(qSell[1], decimals));
-        const quickBuy  = 1 / parseFloat(ethers.utils.formatEther(qBuy[1]));
-        const sushiSell = parseFloat(ethers.utils.formatUnits(sSell[1], decimals));
-        const sushiBuy  = 1 / parseFloat(ethers.utils.formatEther(sBuy[1]));
-        const meshSell  = parseFloat(ethers.utils.formatUnits(mSell[1], decimals));
-        const meshBuy   = 1 / parseFloat(ethers.utils.formatEther(mBuy[1]));
-
-        document.getElementById("quick_sell").innerText = quickSell.toFixed(6);
-        document.getElementById("quick_buy").innerText  = quickBuy.toFixed(6);
-        document.getElementById("sushi_sell").innerText = sushiSell.toFixed(6);
-        document.getElementById("sushi_buy").innerText  = sushiBuy.toFixed(6);
-        document.getElementById("mesh_sell").innerText  = meshSell.toFixed(6);
-        document.getElementById("mesh_buy").innerText   = meshBuy.toFixed(6);
-
-        const sellPrices = [
-          { name: "QuickSwap", price: quickSell },
-          { name: "SushiSwap", price: sushiSell },
-          { name: "MeshSwap",  price: meshSell }
-        ];
-        const buyPrices = [
-          { name: "QuickSwap", price: quickBuy },
-          { name: "SushiSwap", price: sushiBuy },
-          { name: "MeshSwap",  price: meshBuy }
-        ];
-
-        const bestSell = sellPrices.reduce((a, b) => a.price > b.price ? a : b);
-        const bestBuy  = buyPrices.reduce((a, b) => a.price < b.price ? a : b);
-        const diffPct  = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
-
-        document.getElementById("arb").innerText =
-          diffPct > 0.05
-            ? `Buy on ${bestBuy.name}, Sell on ${bestSell.name} — ${pair} profit ≈ ${diffPct.toFixed(3)}%`
-            : "No significant arbitrage opportunity.";
-
-      } catch (err) {
+      } catch(err) {
         console.error(err);
         alert("Error fetching prices. Make sure you're on Polygon Mainnet.");
       }
