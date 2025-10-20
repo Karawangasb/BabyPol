@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simulasi Arbitrase USDT antar DEX (Polygon)</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f5f6fa;
+      color: #222;
+      padding: 20px;
+    }
+    h2 { color: #4f46e5; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #4f46e5;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .highlight-max { background: #c8f7c5; font-weight: bold; }
+    .highlight-min { background: #f8c5c5; font-weight: bold; }
+    #loading { color: #888; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🔁 Simulasi Arbitrase USDT antar DEX (Polygon)</h2>
+  <button onclick="checkPrices()">Cek Harga</button>
+  <p id="loading"></p>
+  <table id="priceTable">
+    <thead>
+      <tr><th>DEX</th><th>Harga WMATIC per 1 USDT</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const dexList = ["quickswap", "sushiswap", "apeswap", "dfyn", "jetswap"];
+    const tokenPair = { base: "USDT", quote: "WMATIC" };
+
+    // ambil harga dari tiap DEX
+    async function getPriceFromDEX(dex) {
+      try {
+        switch (dex) {
+          case "quickswap":
+            const quick = await axios.get("https://api.quickswap.exchange/v1/pairs");
+            const qpair = quick.data.find(p => 
+              (p.token0.symbol === "USDT" && p.token1.symbol === "WMATIC") ||
+              (p.token0.symbol === "WMATIC" && p.token1.symbol === "USDT")
+            );
+            if (!qpair) return null;
+            return parseFloat(qpair.token0.symbol === "USDT" ? qpair.token1Price : qpair.token0Price);
+
+          case "sushiswap":
+            const sushi = await axios.get("https://api.sushi.com/price/v1/137");
+            const susPrice = sushi.data["WMATIC"] / sushi.data["USDT"];
+            return susPrice;
+
+          case "apeswap":
+            const ape = await axios.get("https://api.apeswap.finance/tokens");
+            const apeUSDT = ape.data.find(t => t.symbol === "USDT");
+            const apeWMATIC = ape.data.find(t => t.symbol === "WMATIC");
+            if (!apeUSDT || !apeWMATIC) return null;
+            return apeWMATIC.price / apeUSDT.price;
+
+          case "dfyn":
+            const dfyn = await axios.get("https://api.dfyn.network/tokens");
+            const dfynUSDT = dfyn.data.find(t => t.symbol === "USDT");
+            const dfynWMATIC = dfyn.data.find(t => t.symbol === "WMATIC");
+            if (!dfynUSDT || !dfynWMATIC) return null;
+            return dfynWMATIC.price / dfynUSDT.price;
+
+          case "jetswap":
+            const jet = await axios.get("https://api.jetswap.finance/pairs");
+            const jpair = jet.data.find(p => 
+              (p.token0.symbol === "USDT" && p.token1.symbol === "WMATIC") ||
+              (p.token0.symbol === "WMATIC" && p.token1.symbol === "USDT")
+            );
+            if (!jpair) return null;
+            return parseFloat(jpair.token0.symbol === "USDT" ? jpair.token1Price : jpair.token0Price);
+
+          default:
+            return null;
+        }
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function checkPrices() {
+      const tbody = document.querySelector("#priceTable tbody");
+      const loading = document.getElementById("loading");
+      tbody.innerHTML = "";
+      loading.textContent = "⏳ Mengambil data harga...";
+
+      const results = await Promise.all(dexList.map(dex => getPriceFromDEX(dex)));
+
+      let min = Infinity, max = -Infinity;
+      for (const p of results) {
+        if (p) {
+          min = Math.min(min, p);
+          max = Math.max(max, p);
+        }
+      }
+
+      dexList.forEach((dex, i) => {
+        const price = results[i];
+        const row = document.createElement("tr");
+        if (price === null) {
+          row.innerHTML = `<td>${dex}</td><td>❌ Tidak tersedia</td>`;
+        } else {
+          const cls = price === min ? "highlight-min" : price === max ? "highlight-max" : "";
+          row.innerHTML = `<td>${dex}</td><td class="${cls}">${price.toFixed(6)}</td>`;
+        }
+        tbody.appendChild(row);
+      });
+
+      loading.textContent = "✅ Selesai memuat harga.";
+    }
+  </script>
+</body>
+</html>
