@@ -2,114 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>POL/USDC — On-Chain Price Checker (No Wallet Needed)</title>
+  <title>Multi-Token Price Checker — Polygon DEX</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body style="font-family: Arial; margin: 20px;">
-  <h2>POL / USDC — 2-Way Price Comparator (QuickSwap, SushiSwap, MeshSwap)</h2>
+  <h2>🪙 Multi-Token — USDC Price Comparator (QuickSwap, SushiSwap, MeshSwap)</h2>
   <button id="check">Check Prices</button>
-
-  <div style="margin-top:20px;">
-    <h3>QuickSwap:</h3>
-    <p>Sell POL → USDC: <span id="quick_sell">-</span></p>
-    <p>Buy POL ← USDC: <span id="quick_buy">-</span></p>
-
-    <h3>SushiSwap:</h3>
-    <p>Sell POL → USDC: <span id="sushi_sell">-</span></p>
-    <p>Buy POL ← USDC: <span id="sushi_buy">-</span></p>
-
-    <h3>MeshSwap:</h3>
-    <p>Sell POL → USDC: <span id="mesh_sell">-</span></p>
-    <p>Buy POL ← USDC: <span id="mesh_buy">-</span></p>
-
-    <hr>
-    <h3>Arbitrage Opportunities:</h3>
-    <p id="arb">-</p>
-  </div>
+  <div id="result"></div>
 
   <script>
-    // Router DEX
     const QUICKSWAP = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
     const SUSHISWAP = "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506";
     const MESHSWAP  = "0x10f4A785F458Bc144e3706575924889954946639";
+    const USDC      = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
 
-    // Token
-    const USDC = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";  // USDC Polygon
-    const POL  = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"; // WMATIC (POL)
+    const tokens = [
+      { name: "POL",  address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", decimals: 18 },
+      { name: "USDT", address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", decimals: 6 },
+      { name: "DAI",  address: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063", decimals: 18 },
+      { name: "WBTC", address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", decimals: 8 }
+    ];
 
     const ABI = [
       "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)"
     ];
 
-    // Gunakan RPC publik Polygon — tidak butuh MetaMask
     const provider = new ethers.providers.JsonRpcProvider("https://polygon-rpc.com");
+    const quick = new ethers.Contract(QUICKSWAP, ABI, provider);
+    const sushi = new ethers.Contract(SUSHISWAP, ABI, provider);
+    const mesh  = new ethers.Contract(MESHSWAP,  ABI, provider);
 
     document.getElementById("check").onclick = async () => {
-      try {
-        const quick = new ethers.Contract(QUICKSWAP, ABI, provider);
-        const sushi = new ethers.Contract(SUSHISWAP, ABI, provider);
-        const mesh  = new ethers.Contract(MESHSWAP,  ABI, provider);
+      document.getElementById("result").innerHTML = "<p>⏳ Fetching prices...</p>";
 
-        const amountPOL = ethers.utils.parseEther("1");     // 1 POL
-        const amountUSDC = ethers.utils.parseUnits("1", 6); // 1 USDC
+      let html = "<table border='1' cellpadding='6' cellspacing='0'><tr><th>Token</th><th>QuickSwap</th><th>SushiSwap</th><th>MeshSwap</th></tr>";
 
-        const pathSell = [POL, USDC];
-        const pathBuy = [USDC, POL];
+      for (const t of tokens) {
+        try {
+          const amountIn = ethers.utils.parseUnits("1", t.decimals);
+          const path = [t.address, USDC];
 
-        // Ambil harga dari semua DEX
-        const [qSell, qBuy, sSell, sBuy, mSell, mBuy] = await Promise.all([
-          quick.getAmountsOut(amountPOL, pathSell),
-          quick.getAmountsOut(amountUSDC, pathBuy),
-          sushi.getAmountsOut(amountPOL, pathSell),
-          sushi.getAmountsOut(amountUSDC, pathBuy),
-          mesh.getAmountsOut(amountPOL, pathSell),
-          mesh.getAmountsOut(amountUSDC, pathBuy)
-        ]);
+          const [q, s, m] = await Promise.all([
+            quick.getAmountsOut(amountIn, path),
+            sushi.getAmountsOut(amountIn, path),
+            mesh.getAmountsOut(amountIn, path)
+          ]);
 
-        const quickSell = parseFloat(ethers.utils.formatUnits(qSell[1], 6));
-        const quickBuy  = 1 / parseFloat(ethers.utils.formatEther(qBuy[1]));
-        const sushiSell = parseFloat(ethers.utils.formatUnits(sSell[1], 6));
-        const sushiBuy  = 1 / parseFloat(ethers.utils.formatEther(sBuy[1]));
-        const meshSell  = parseFloat(ethers.utils.formatUnits(mSell[1], 6));
-        const meshBuy   = 1 / parseFloat(ethers.utils.formatEther(mBuy[1]));
+          const quickPrice = parseFloat(ethers.utils.formatUnits(q[1], 6)).toFixed(4);
+          const sushiPrice = parseFloat(ethers.utils.formatUnits(s[1], 6)).toFixed(4);
+          const meshPrice  = parseFloat(ethers.utils.formatUnits(m[1], 6)).toFixed(4);
 
-        // Tampilkan harga
-        document.getElementById("quick_sell").innerText = `${quickSell.toFixed(4)} USDC`;
-        document.getElementById("quick_buy").innerText  = `${quickBuy.toFixed(4)} USDC`;
-        document.getElementById("sushi_sell").innerText = `${sushiSell.toFixed(4)} USDC`;
-        document.getElementById("sushi_buy").innerText  = `${sushiBuy.toFixed(4)} USDC`;
-        document.getElementById("mesh_sell").innerText  = `${meshSell.toFixed(4)} USDC`;
-        document.getElementById("mesh_buy").innerText   = `${meshBuy.toFixed(4)} USDC`;
-
-        // Cari peluang arbitrase dua arah
-        const sellPrices = [
-          { name: "QuickSwap", price: quickSell },
-          { name: "SushiSwap", price: sushiSell },
-          { name: "MeshSwap",  price: meshSell }
-        ];
-        const buyPrices = [
-          { name: "QuickSwap", price: quickBuy },
-          { name: "SushiSwap", price: sushiBuy },
-          { name: "MeshSwap",  price: meshBuy }
-        ];
-
-        const bestSell = sellPrices.reduce((a, b) => a.price > b.price ? a : b);
-        const bestBuy  = buyPrices.reduce((a, b) => a.price < b.price ? a : b);
-        const diffPct  = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
-
-        const tradeAmount = 100; // simulasi 100 POL
-        const gasCost = 0.006;   // estimasi gas swap 2x Polygon (dalam USDC)
-        const profitGross = (bestSell.price - bestBuy.price) * tradeAmount;
-        const profitNet = profitGross - gasCost;
-
-        document.getElementById("arb").innerText =
-          profitNet > 0
-            ? `🟢 Buy on ${bestBuy.name}, Sell on ${bestSell.name} → Profit ≈ ${profitNet.toFixed(3)} USDC (${diffPct.toFixed(2)}%)`
-            : "🔸 No profitable arbitrage after gas";
-      } catch (err) {
-        console.error(err);
-        alert("Error fetching prices. Pastikan koneksi ke Polygon RPC lancar.");
+          html += `<tr>
+            <td>${t.name}</td>
+            <td>${quickPrice} USDC</td>
+            <td>${sushiPrice} USDC</td>
+            <td>${meshPrice} USDC</td>
+          </tr>`;
+        } catch (err) {
+          html += `<tr>
+            <td>${t.name}</td>
+            <td colspan="3">❌ Tidak ada pool ke USDC</td>
+          </tr>`;
+        }
       }
+
+      html += "</table>";
+      document.getElementById("result").innerHTML = html;
     };
   </script>
 </body>
