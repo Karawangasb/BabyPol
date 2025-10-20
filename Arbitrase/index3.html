@@ -2,124 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>POL/USDT On-Chain DEX Comparator</title>
+  <title>POL/USDT Price — On-Chain Arbitrage Checker</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f8fafc;
-      color: #222;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
-    }
-    h2 { margin-bottom: 5px; }
-    button {
-      background: #4f46e5;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 20px;
-      margin: 10px;
-      cursor: pointer;
-    }
-    button:hover { background: #3730a3; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      margin-top: 30px;
-    }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    .highlight {
-      background: #e0f2fe;
-    }
-  </style>
 </head>
 <body>
-  <h2>🔗 POL / USDT — On-Chain DEX Comparator</h2>
-  <p>Compare prices directly from Polygon blockchain (no API)</p>
+  <h2>POL / USDT — On-Chain Price Comparator</h2>
+  <button id="connect">Connect MetaMask</button>
+  <button id="check">Check Prices</button>
 
-  <button id="connect">🔌 Connect MetaMask</button>
-  <button id="check">📊 Check Prices</button>
-
-  <div class="grid">
-    <div class="card"><h3>QuickSwap</h3><p id="quick">-</p></div>
-    <div class="card"><h3>SushiSwap</h3><p id="sushi">-</p></div>
-    <div class="card"><h3>MeshSwap</h3><p id="mesh">-</p></div>
-    <div class="card"><h3>OKX DEX</h3><p id="okx">-</p></div>
-  </div>
-
-  <div class="card highlight" style="margin-top:30px;">
-    <h3>📈 Arbitrage Opportunity</h3>
-    <p id="diff">-</p>
+  <div>
+    <h3>QuickSwap: <span id="quick">-</span></h3>
+    <h3>SushiSwap: <span id="sushi">-</span></h3>
+    <h3>MeshSwap: <span id="mesh">-</span></h3>
+    <h3>Best vs Worst Diff: <span id="diff">-</span></h3>
   </div>
 
   <script>
-    const ROUTERS = {
-      quick: "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
-      sushi: "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506",
-      mesh:  "0x10f4A785F458Bc144e3706575924889954946639",
-      okx:   "0x5E8DF5b010D57e525562791717011D496676552A"
-    };
-
-    const USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // 6 decimals
-    const POL  = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"; // WETH/WPOL
+    const QUICKSWAP = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
+    const SUSHISWAP = "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506";
+    const MESHSWAP  = "0x10f4A785F458Bc144e3706575924889954946639"; // ← Added MeshSwap router
+    const USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
+    const WETH = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"; // POL (Wrapped MATIC)
 
     const ABI = [
       "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)"
     ];
 
-    let provider;
+    let provider, signer;
 
     document.getElementById("connect").onclick = async () => {
-      if (!window.ethereum) return alert("Please install MetaMask first.");
+      if (!window.ethereum) return alert("Install MetaMask");
       provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
-      const network = await provider.getNetwork();
-      if (network.chainId !== 137) {
-        alert("Please switch MetaMask to Polygon Mainnet!");
-      } else {
-        alert("✅ Connected to Polygon network!");
-      }
+      signer = provider.getSigner();
+      alert("Connected to MetaMask!");
     };
 
     document.getElementById("check").onclick = async () => {
-      if (!provider) return alert("Please connect MetaMask first.");
-
-      const amountIn = ethers.utils.parseEther("1"); // 1 POL
-      const path = [POL, USDT];
-      const results = {};
-
+      if (!provider) return alert("Please connect MetaMask first");
       try {
-        for (const [name, address] of Object.entries(ROUTERS)) {
-          const router = new ethers.Contract(address, ABI, provider);
-          const amounts = await router.getAmountsOut(amountIn, path);
-          const price = parseFloat(ethers.utils.formatUnits(amounts[1], 6));
-          results[name] = price;
-          document.getElementById(name).innerText = `${price.toFixed(4)} USDT`;
-        }
+        const quick = new ethers.Contract(QUICKSWAP, ABI, provider);
+        const sushi = new ethers.Contract(SUSHISWAP, ABI, provider);
+        const mesh  = new ethers.Contract(MESHSWAP, ABI, provider); // ← New
 
-        // Hitung arbitrase (selisih tertinggi - terendah)
-        const prices = Object.values(results);
+        const amountIn = ethers.utils.parseEther("1"); // 1 POL
+        const path = [WETH, USDT];
+
+        const qAmounts = await quick.getAmountsOut(amountIn, path);
+        const sAmounts = await sushi.getAmountsOut(amountIn, path);
+        const mAmounts = await mesh.getAmountsOut(amountIn, path); // ← New
+
+        const quickPrice = parseFloat(ethers.utils.formatUnits(qAmounts[1], 6));
+        const sushiPrice = parseFloat(ethers.utils.formatUnits(sAmounts[1], 6));
+        const meshPrice  = parseFloat(ethers.utils.formatUnits(mAmounts[1], 6)); // ← New
+
+        // Find min and max for diff
+        const prices = [quickPrice, sushiPrice, meshPrice];
         const maxPrice = Math.max(...prices);
         const minPrice = Math.min(...prices);
-        const diff = ((maxPrice - minPrice) / minPrice) * 100;
+        const diffPerc = ((maxPrice - minPrice) / minPrice) * 100;
 
-        const maxDex = Object.keys(results).find(k => results[k] === maxPrice);
-        const minDex = Object.keys(results).find(k => results[k] === minPrice);
-
+        document.getElementById("quick").innerText = `${quickPrice.toFixed(4)} USDT`;
+        document.getElementById("sushi").innerText = `${sushiPrice.toFixed(4)} USDT`;
+        document.getElementById("mesh").innerText  = `${meshPrice.toFixed(4)} USDT`; // ← New
         document.getElementById("diff").innerText =
-          `Buy on ${minDex.toUpperCase()} (${minPrice.toFixed(4)} USDT), Sell on ${maxDex.toUpperCase()} (${maxPrice.toFixed(4)} USDT) → Spread: ${diff.toFixed(3)}%`;
+          `${diffPerc.toFixed(3)}% (Best: ${maxPrice.toFixed(4)}, Worst: ${minPrice.toFixed(4)})`;
 
       } catch (err) {
         console.error(err);
-        alert("⚠️ Error fetching on-chain prices. Check MetaMask & Polygon network.");
+        alert("Error fetching prices. Make sure you're on Polygon Mainnet.");
       }
     };
   </script>
