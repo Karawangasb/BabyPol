@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BabyPol NFT Mint</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
+    input { width: 60%; padding: 8px; margin: 10px 0; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    #status { margin: 20px; font-weight: bold; }
+    #nftPreview { margin-top: 20px; max-width: 300px; display: none; border: 1px solid #ccc; padding: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Mint BabyPol NFT</h1>
+
+  <input type="text" id="tokenURI" placeholder="Masukkan link metadata JSON NFT">
+  <br>
+  <button id="mintBtn">Mint NFT</button>
+
+  <p id="status"></p>
+  <img id="nftPreview" src="" alt="NFT Preview">
+
+  <script>
+    const contractAddress = "0x0bF927cc762d1Dd10c9180032C907Ca978C7D25f";
+
+    // ABI minimal untuk minting
+    const abi = [
+      "function safeMint(address to, string calldata uri) external returns (uint256)"
+    ];
+
+    const mintBtn = document.getElementById("mintBtn");
+    const status = document.getElementById("status");
+    const nftPreview = document.getElementById("nftPreview");
+
+    async function mintNFT() {
+      const tokenURI = document.getElementById("tokenURI").value.trim();
+      if (!tokenURI) {
+        status.innerText = "Masukkan token URI terlebih dahulu!";
+        return;
+      }
+
+      if (!window.ethereum) {
+        status.innerText = "MetaMask tidak ditemukan!";
+        return;
+      }
+
+      try {
+        // Request wallet connection
+        await ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+
+        status.innerText = "Mengirim transaksi mint...";
+        const tx = await contract.safeMint(await signer.getAddress(), tokenURI);
+        status.innerText = "Transaksi dikirim! Hash: " + tx.hash;
+
+        await tx.wait();
+        status.innerText = "NFT berhasil dicetak! Tx: " + tx.hash;
+
+        // Coba tampilkan gambar dari metadata JSON
+        try {
+          let metadataUrl = tokenURI;
+          if (tokenURI.startsWith("ipfs://")) {
+            metadataUrl = tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/");
+          }
+          const resp = await fetch(metadataUrl);
+          const metadata = await resp.json();
+          if (metadata.image) {
+            let imageUrl = metadata.image;
+            if (imageUrl.startsWith("ipfs://")) {
+              imageUrl = imageUrl.replace("ipfs://", "https://ipfs.io/ipfs/");
+            }
+            nftPreview.src = imageUrl;
+            nftPreview.style.display = "block";
+          }
+        } catch(err) {
+          console.log("Gagal memuat preview NFT:", err);
+        }
+
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Terjadi kesalahan: " + err.message;
+      }
+    }
+
+    mintBtn.onclick = mintNFT;
+  </script>
+</body>
+</html>
