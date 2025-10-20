@@ -1,97 +1,127 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simulasi Arbitrase 1inch (Polygon)</title>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <meta charset="UTF-8">
+  <title>POL/USDT On-Chain DEX Comparator</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f9; color: #222; padding: 20px; }
-    h2 { color: #4f46e5; }
-    button { background: #4f46e5; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      color: #222;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 { margin-bottom: 5px; }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+    }
     button:hover { background: #3730a3; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-    th { background: #4f46e5; color: white; }
-    tr:nth-child(even) { background: #f9f9f9; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .highlight {
+      background: #e0f2fe;
+    }
   </style>
 </head>
 <body>
-  <h2>🔁 Simulasi Arbitrase WMATIC ↔ USDT (via 1inch + CORS Proxy)</h2>
-  <button onclick="checkPrices()">Cek Harga</button>
-  <p id="loading"></p>
+  <h2>🔗 POL / USDT — On-Chain DEX Comparator</h2>
+  <p>Compare prices directly from Polygon blockchain (no API)</p>
 
-  <table id="priceTable">
-    <thead>
-      <tr><th>Arah Swap</th><th>Harga (Estimasi)</th><th>Sumber</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <button id="connect">🔌 Connect MetaMask</button>
+  <button id="check">📊 Check Prices</button>
+
+  <div class="grid">
+    <div class="card"><h3>QuickSwap</h3><p id="quick">-</p></div>
+    <div class="card"><h3>SushiSwap</h3><p id="sushi">-</p></div>
+    <div class="card"><h3>MeshSwap</h3><p id="mesh">-</p></div>
+    <div class="card"><h3>OKX DEX</h3><p id="okx">-</p></div>
+  </div>
+
+  <div class="card highlight" style="margin-top:30px;">
+    <h3>📈 Arbitrage Opportunity</h3>
+    <p id="diff">-</p>
+  </div>
 
   <script>
-    const API_KEY = "7gXrbGyk3Ax1epidXqOKF6k5LusH8LoR";
-    const BASE_URL = "https://api.1inch.dev/swap/v5.2/137";
-    const PROXY = "https://corsproxy.io/?"; // ✅ solusi anti-CORS
-
-    const TOKENS = {
-      USDT: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-      WMATIC: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270"
+    const ROUTERS = {
+      quick: "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
+      sushi: "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506",
+      mesh:  "0x10f4A785F458Bc144e3706575924889954946639",
+      okx:   "0x5E8DF5b010D57e525562791717011D496676552A"
     };
 
-    async function getQuote(from, to, amount) {
+    const USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // 6 decimals
+    const POL  = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"; // WETH/WPOL
+
+    const ABI = [
+      "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)"
+    ];
+
+    let provider;
+
+    document.getElementById("connect").onclick = async () => {
+      if (!window.ethereum) return alert("Please install MetaMask first.");
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      if (network.chainId !== 137) {
+        alert("Please switch MetaMask to Polygon Mainnet!");
+      } else {
+        alert("✅ Connected to Polygon network!");
+      }
+    };
+
+    document.getElementById("check").onclick = async () => {
+      if (!provider) return alert("Please connect MetaMask first.");
+
+      const amountIn = ethers.utils.parseEther("1"); // 1 POL
+      const path = [POL, USDT];
+      const results = {};
+
       try {
-        const url = `${PROXY}${BASE_URL}/quote?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${amount}`;
-        const res = await axios.get(url, {
-          headers: { Authorization: `Bearer ${API_KEY}` }
-        });
-        return res.data;
+        for (const [name, address] of Object.entries(ROUTERS)) {
+          const router = new ethers.Contract(address, ABI, provider);
+          const amounts = await router.getAmountsOut(amountIn, path);
+          const price = parseFloat(ethers.utils.formatUnits(amounts[1], 6));
+          results[name] = price;
+          document.getElementById(name).innerText = `${price.toFixed(4)} USDT`;
+        }
+
+        // Hitung arbitrase (selisih tertinggi - terendah)
+        const prices = Object.values(results);
+        const maxPrice = Math.max(...prices);
+        const minPrice = Math.min(...prices);
+        const diff = ((maxPrice - minPrice) / minPrice) * 100;
+
+        const maxDex = Object.keys(results).find(k => results[k] === maxPrice);
+        const minDex = Object.keys(results).find(k => results[k] === minPrice);
+
+        document.getElementById("diff").innerText =
+          `Buy on ${minDex.toUpperCase()} (${minPrice.toFixed(4)} USDT), Sell on ${maxDex.toUpperCase()} (${maxPrice.toFixed(4)} USDT) → Spread: ${diff.toFixed(3)}%`;
+
       } catch (err) {
         console.error(err);
-        return null;
+        alert("⚠️ Error fetching on-chain prices. Check MetaMask & Polygon network.");
       }
-    }
-
-    async function checkPrices() {
-      const tbody = document.querySelector("#priceTable tbody");
-      const loading = document.getElementById("loading");
-      tbody.innerHTML = "";
-      loading.textContent = "⏳ Mengambil data harga dari 1inch...";
-
-      const [usdtToMatic, maticToUsdt] = await Promise.all([
-        getQuote(TOKENS.USDT, TOKENS.WMATIC, 1e6),  // 1 USDT
-        getQuote(TOKENS.WMATIC, TOKENS.USDT, 1e18)  // 1 WMATIC
-      ]);
-
-      const rows = [];
-      if (usdtToMatic) {
-        rows.push({
-          direction: "1 USDT → WMATIC",
-          price: (usdtToMatic.toTokenAmount / 1e18).toFixed(6),
-          src: usdtToMatic.protocols?.[0]?.[0]?.name || "1inch"
-        });
-      }
-      if (maticToUsdt) {
-        rows.push({
-          direction: "1 WMATIC → USDT",
-          price: (maticToUsdt.toTokenAmount / 1e6).toFixed(6),
-          src: maticToUsdt.protocols?.[0]?.[0]?.name || "1inch"
-        });
-      }
-
-      for (const row of rows) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.direction}</td><td>${row.price}</td><td>${row.src}</td>`;
-        tbody.appendChild(tr);
-      }
-
-      if (rows.length === 2) {
-        const diff = (rows[1].price / (1 / rows[0].price) - 1) * 100;
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="3"><b>💰 Potensi Arbitrase:</b> ${diff.toFixed(2)}%</td>`;
-        tbody.appendChild(tr);
-      }
-
-      loading.textContent = "✅ Harga berhasil dimuat dari 1inch.";
-    }
+    };
   </script>
 </body>
 </html>
