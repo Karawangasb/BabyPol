@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simulasi Arbitrase 1inch (Polygon)</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f5f6fa;
+      color: #222;
+      padding: 20px;
+    }
+    h2 { color: #4f46e5; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #4f46e5;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .highlight-max { background: #c8f7c5; font-weight: bold; }
+    .highlight-min { background: #f8c5c5; font-weight: bold; }
+    #loading { color: #888; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🔁 Simulasi Arbitrase WMATIC ↔ USDT via 1inch</h2>
+  <button onclick="checkPrices()">Cek Harga 1inch</button>
+  <p id="loading"></p>
+
+  <table id="priceTable">
+    <thead>
+      <tr><th>Arah Swap</th><th>Harga per Token</th><th>Sumber</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const API_KEY = "7gXrbGyk3Ax1epidXqOKF6k5LusH8LoR"; // Ganti jika perlu
+    const BASE_URL = "https://api.1inch.dev/swap/v5.2/137";
+
+    const TOKENS = {
+      USDT: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+      WMATIC: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270"
+    };
+
+    async function getQuote(from, to, amount) {
+      try {
+        const res = await axios.get(`${BASE_URL}/quote`, {
+          headers: { Authorization: `Bearer ${API_KEY}` },
+          params: {
+            fromTokenAddress: from,
+            toTokenAddress: to,
+            amount: amount
+          }
+        });
+        return res.data;
+      } catch (err) {
+        console.error(err.response?.data || err.message);
+        return null;
+      }
+    }
+
+    async function checkPrices() {
+      const tbody = document.querySelector("#priceTable tbody");
+      const loading = document.getElementById("loading");
+      tbody.innerHTML = "";
+      loading.textContent = "⏳ Mengambil harga dari 1inch...";
+
+      // 1 USDT = 10^6, 1 WMATIC = 10^18
+      const amountUSDT = (1 * 1e6).toString();
+      const amountWMATIC = (1 * 1e18).toString();
+
+      const [usdtToMatic, maticToUsdt] = await Promise.all([
+        getQuote(TOKENS.USDT, TOKENS.WMATIC, amountUSDT),
+        getQuote(TOKENS.WMATIC, TOKENS.USDT, amountWMATIC)
+      ]);
+
+      const prices = [];
+      if (usdtToMatic)
+        prices.push({
+          direction: "1 USDT → WMATIC",
+          price: parseFloat(usdtToMatic.toTokenAmount / 1e18).toFixed(6),
+          src: usdtToMatic.protocols?.[0]?.[0]?.name || "1inch"
+        });
+      if (maticToUsdt)
+        prices.push({
+          direction: "1 WMATIC → USDT",
+          price: parseFloat(maticToUsdt.toTokenAmount / 1e6).toFixed(6),
+          src: maticToUsdt.protocols?.[0]?.[0]?.name || "1inch"
+        });
+
+      for (const row of prices) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.direction}</td><td>${row.price}</td><td>${row.src}</td>`;
+        tbody.appendChild(tr);
+      }
+
+      if (prices.length === 2) {
+        const diff = (prices[1].price / (1 / prices[0].price) - 1) * 100;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="3"><b>💰 Potensi Arbitrase:</b> ${diff.toFixed(2)}%</td>`;
+        tbody.appendChild(tr);
+      }
+
+      loading.textContent = "✅ Selesai memuat data dari 1inch.";
+    }
+  </script>
+</body>
+</html>
