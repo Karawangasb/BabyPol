@@ -3,11 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Modular Arbitrage Scanner</title>
-  <!-- Load ethers from CDN -->
+  <title>Arbitrage Scanner — Pilih Patokan</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
+    h2 { color: #2c3e50; }
+    .controls { margin: 10px 0; }
+    select, button {
+      padding: 8px 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button { background: #3498db; color: white; cursor: pointer; }
+    button:hover { background: #2980b9; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     .profit { background: #d4edda; }
@@ -15,11 +24,22 @@
   </style>
 </head>
 <body>
-  <h2>Modular Arbitrage Scanner � Polygon</h2>
-  <button id="scan">Scan</button>
-  <div id="result"></div>
+  <h2>🔍 Arbitrage Scanner — Pilih Patokan Stablecoin</h2>
 
-  <!-- Load main module (type="module") -->
+  <div class="controls">
+    <label for="baseToken">Patokan: </label>
+    <select id="baseToken">
+      <option value="usdc">USDC</option>
+      <option value="usdt">USDT</option>
+      <option value="dai">DAI</option>
+    </select>
+    <button id="scanBtn">Scan Ulang</button>
+  </div>
+
+  <div id="result">
+    <p>Klik "Scan Ulang" untuk memulai.</p>
+  </div>
+
   <script type="module" src="./main.js"></script>
 </body>
 </html>
