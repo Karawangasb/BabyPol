@@ -1,0 +1,13 @@
+// tokens.js
+export const tokens = [
+  { name: "POL",   address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", decimals: 18 },
+  { name: "USDT",  address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", decimals: 6 },
+  { name: "USDC",  address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals: 6 },
+  { name: "DAI",   address: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063", decimals: 18 },
+  { name: "WETH",  address: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619", decimals: 18 },
+  { name: "WBTC",  address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", decimals: 8 },
+  { name: "AAVE",  address: "0xD6DF932A45C0f255f85145f286eA0b292B21C90B", decimals: 18 },
+  { name: "SUSHI", address: "0x0b3F868E0BE5597D5DB7fEB59E1CADBb0fdDa50a", decimals: 18 },
+  { name: "QUICK", address: "0xB5C064F955D8e7F38fE0460C556a72987494eE17", decimals: 18 },
+  { name: "LINK",  address: "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39", decimals: 18 }
+];
