@@ -3,10 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>POL-Based Arbitrage Scanner</title>
-  <!-- Load ethers FIRST (global) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family: Arial; margin: 20px; }
+    .log { 
+      background: #f1f1f1; 
+      padding: 10px; 
+      margin-top: 10px; 
+      font-size: 12px; 
+      max-height: 200px; 
+      overflow-y: auto; 
+      border: 1px solid #ccc;
+    }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     .profit { background: #d4edda; }
@@ -15,31 +23,49 @@
 <body>
   <h2>🌀 Arbitrage Scanner — Modal: 1 POL</h2>
   <button id="scan">Scan Sekarang</button>
+  
   <div id="result"></div>
+  <div class="log" id="log">ℹ️ Log akan muncul di sini...</div>
 
-  <!-- Load modul setelah ethers siap -->
   <script type="module">
     import { scanTriangularArbitrage } from "./core/scanner.js";
 
-    document.getElementById("scan").onclick = async () => {
-      document.getElementById("result").innerHTML = "<p>🔍 Memindai...</p>";
-      const results = await scanTriangularArbitrage(1.0); // minimal 1%
+    const logEl = document.getElementById("log");
+    const resultEl = document.getElementById("result");
 
-      if (results.length === 0) {
-        document.getElementById("result").innerHTML = "<p>❌ Tidak ada peluang ≥1% ditemukan.</p>";
-      } else {
-        let html = `<h3>Ditemukan ${results.length} peluang:</h3><table>
-          <tr><th>DEX</th><th>Path</th><th>Akhir (POL)</th><th>Profit (%)</th></tr>`;
-        for (const r of results) {
-          html += `<tr class="profit">
-            <td>${r.dex}</td>
-            <td>${r.path}</td>
-            <td>${r.finalPOL}</td>
-            <td>+${r.profitPct}%</td>
-          </tr>`;
+    function log(msg) {
+      console.log(msg);
+      logEl.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${msg}</div>`;
+      logEl.scrollTop = logEl.scrollHeight; // auto-scroll
+    }
+
+    document.getElementById("scan").onclick = async () => {
+      resultEl.innerHTML = "";
+      logEl.innerHTML = ""; // clear log
+      log("🔍 Memulai pemindaian arbitrase...");
+
+      try {
+        const results = await scanTriangularArbitrage(1.0, log); // kirim fungsi log ke scanner
+        if (results.length === 0) {
+          resultEl.innerHTML = "<p>❌ Tidak ada peluang ≥1% ditemukan.</p>";
+        } else {
+          let html = `<h3>Ditemukan ${results.length} peluang:</h3><table>
+            <tr><th>DEX</th><th>Path</th><th>Akhir (POL)</th><th>Profit (%)</th></tr>`;
+          for (const r of results) {
+            html += `<tr class="profit">
+              <td>${r.dex}</td>
+              <td>${r.path}</td>
+              <td>${r.finalPOL}</td>
+              <td>+${r.profitPct}%</td>
+            </tr>`;
+          }
+          html += "</table>";
+          resultEl.innerHTML = html;
         }
-        html += "</table>";
-        document.getElementById("result").innerHTML = html;
+        log("✅ Pemindaian selesai.");
+      } catch (err) {
+        log(`❌ Error utama: ${err.message || err}`);
+        resultEl.innerHTML = `<p>⚠️ Error: ${err.message || 'Lihat log di bawah'}</p>`;
       }
     };
   </script>
