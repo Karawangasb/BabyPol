@@ -9,9 +9,9 @@ from web3 import Web3
 # --------------------------
 # 1. CONFIGURATION
 # --------------------------
-POLYGON_RPC = "https://polygon-rpc.com"  # bisa diganti Alchemy/Infura RPC
+POLYGON_RPC = "https://polygon-rpc.com"  # Bisa diganti Alchemy/Infura RPC
 AMOUNT_IN = 1  # 1 POL modal awal
-SLEEP_INTERVAL = 10  # detik delay antara loop
+SLEEP_INTERVAL = 10  # Detik delay antara loop
 
 TOKENS = {
     "POL": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
@@ -44,7 +44,7 @@ ROUTER_ABI = [
 # 2. CONNECT TO POLYGON
 # --------------------------
 w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
-if not w3.isConnected():
+if not w3.is_connected():
     print("❌ Failed to connect to Polygon RPC")
     exit()
 else:
@@ -84,4 +84,3 @@ while True:
         check_triangle(*tri)
     print("-" * 50)
     time.sleep(SLEEP_INTERVAL)
-
