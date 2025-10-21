@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Modular Arbitrage Scanner</title>
+  <!-- Load ethers from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    .profit { background: #d4edda; }
+    .loss { background: #f8d7da; }
+  </style>
+</head>
+<body>
+  <h2>Modular Arbitrage Scanner — Polygon</h2>
+  <button id="scan">Scan</button>
+  <div id="result"></div>
+
+  <!-- Load main module (type="module") -->
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
