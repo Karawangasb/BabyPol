@@ -1,45 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Arbitrage Scanner — Pilih Patokan</title>
+  <meta charset="UTF-8">
+  <title>POL-Based Arbitrage Scanner</title>
+  <!-- Load ethers FIRST (global) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
-    h2 { color: #2c3e50; }
-    .controls { margin: 10px 0; }
-    select, button {
-      padding: 8px 12px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button { background: #3498db; color: white; cursor: pointer; }
-    button:hover { background: #2980b9; }
+    body { font-family: Arial; margin: 20px; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     .profit { background: #d4edda; }
-    .loss { background: #f8d7da; }
   </style>
 </head>
 <body>
-  <h2>🔍 Arbitrage Scanner — Pilih Patokan Stablecoin</h2>
+  <h2>🌀 Arbitrage Scanner — Modal: 1 POL</h2>
+  <button id="scan">Scan Sekarang</button>
+  <div id="result"></div>
 
-  <div class="controls">
-    <label for="baseToken">Patokan: </label>
-    <select id="baseToken">
-      <option value="usdc">USDC</option>
-      <option value="usdt">USDT</option>
-      <option value="dai">DAI</option>
-    </select>
-    <button id="scanBtn">Scan Ulang</button>
-  </div>
+  <!-- Load modul setelah ethers siap -->
+  <script type="module">
+    import { scanTriangularArbitrage } from "./core/scanner.js";
 
-  <div id="result">
-    <p>Klik "Scan Ulang" untuk memulai.</p>
-  </div>
+    document.getElementById("scan").onclick = async () => {
+      document.getElementById("result").innerHTML = "<p>🔍 Memindai...</p>";
+      const results = await scanTriangularArbitrage(1.0); // minimal 1%
 
-  <script type="module" src="./main.js"></script>
+      if (results.length === 0) {
+        document.getElementById("result").innerHTML = "<p>❌ Tidak ada peluang ≥1% ditemukan.</p>";
+      } else {
+        let html = `<h3>Ditemukan ${results.length} peluang:</h3><table>
+          <tr><th>DEX</th><th>Path</th><th>Akhir (POL)</th><th>Profit (%)</th></tr>`;
+        for (const r of results) {
+          html += `<tr class="profit">
+            <td>${r.dex}</td>
+            <td>${r.path}</td>
+            <td>${r.finalPOL}</td>
+            <td>+${r.profitPct}%</td>
+          </tr>`;
+        }
+        html += "</table>";
+        document.getElementById("result").innerHTML = html;
+      }
+    };
+  </script>
 </body>
 </html>
