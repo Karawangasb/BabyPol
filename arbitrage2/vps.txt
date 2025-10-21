@@ -1,5 +1,7 @@
-triangular_scanner.py
-
+nano triangular_scanner.py
+---------------------
+python3 triangular_scanner.py
+----------------------
 import itertools
 import time
 from web3 import Web3
