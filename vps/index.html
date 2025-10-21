@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multi-Hop Swap MATIC → TETU → WETH → USDC</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <button id="connectWallet">Connect Wallet</button>
+  <button id="swap">Swap 1 MATIC → USDC</button>
+
+  <script>
+    const routerAddress = "0x684d8c187be836171a1Af8D533e4724893031828";
+    const routerAbi = [
+      "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)"
+    ];
+
+    // Token addresses di Polygon
+    const MATIC = "0x0000000000000000000000000000000000001010"; // wrapped MATIC
+    const TETU = "0x255707B70BF90aa112006E1b07B9AeA6De021424"; // ganti dengan alamat token TETU
+    const WETH = "0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8"; // ganti dengan WETH di Polygon
+    const USDC = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // ganti dengan USDC di Polygon
+
+    let provider, signer;
+
+    document.getElementById("connectWallet").onclick = async () => {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      alert("Wallet connected: " + await signer.getAddress());
+    };
+
+    document.getElementById("swap").onclick = async () => {
+      if (!signer) return alert("Connect wallet first!");
+
+      const router = new ethers.Contract(routerAddress, routerAbi, signer);
+      const path = [MATIC, TETU, WETH, USDC]; // urutan swap multi-hop
+      const to = await signer.getAddress();
+      const amountOutMin = 0; // ganti dengan quote dari TetuSwap agar aman
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 10; // 10 menit
+
+      try {
+        const tx = await router.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          to,
+          deadline,
+          { value: ethers.utils.parseEther("1") } // 1 MATIC
+        );
+        console.log("Transaction sent:", tx.hash);
+        await tx.wait();
+        alert("Swap executed!");
+      } catch (err) {
+        console.error(err);
+        alert("Swap failed: " + err.message);
+      }
+    };
+  </script>
+</body>
+</html>
+
