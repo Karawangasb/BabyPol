@@ -1,1 +1,85 @@
-vps
+triangular_scanner.py
+
+import itertools
+import time
+from web3 import Web3
+
+# --------------------------
+# 1. CONFIGURATION
+# --------------------------
+POLYGON_RPC = "https://polygon-rpc.com"  # bisa diganti Alchemy/Infura RPC
+AMOUNT_IN = 1  # 1 POL modal awal
+SLEEP_INTERVAL = 10  # detik delay antara loop
+
+TOKENS = {
+    "POL": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    "USDT": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    "APEPE": "0xA3f751662e282E83EC3cBc387d225Ca56dD63D3A",
+    "BONK": "0xe5B49820e5A1063F6F4DdF851327b5E8B2301048",
+    "VINU": "0xAFCdd4f666c84Fed1d8BD825aA762e3714F652c9"
+}
+
+QUICKSWAP_ROUTER = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"
+
+ROUTER_ABI = [
+    {
+        "constant": True,
+        "inputs": [
+            {"name": "amountIn", "type": "uint256"},
+            {"name": "path", "type": "address[]"}
+        ],
+        "name": "getAmountsOut",
+        "outputs": [
+            {"name": "amounts", "type": "uint256[]"}
+        ],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
+# --------------------------
+# 2. CONNECT TO POLYGON
+# --------------------------
+w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
+if not w3.isConnected():
+    print("❌ Failed to connect to Polygon RPC")
+    exit()
+else:
+    print("✅ Connected to Polygon RPC")
+
+router = w3.eth.contract(address=QUICKSWAP_ROUTER, abi=ROUTER_ABI)
+
+# --------------------------
+# 3. PREPARE TRIANGLES
+# --------------------------
+tokens_list = list(TOKENS.keys())
+triangles = [tri for tri in itertools.permutations(tokens_list, 3) if tri[0] == "POL" and tri[2] != "POL"]
+
+# --------------------------
+# 4. FUNCTION TO CHECK TRIANGLE
+# --------------------------
+def check_triangle(a, b, c):
+    try:
+        path = [TOKENS[a], TOKENS[b], TOKENS[c], TOKENS["POL"]]
+        amount_in_wei = w3.toWei(AMOUNT_IN, 'ether')
+        amounts = router.functions.getAmountsOut(amount_in_wei, path).call()
+        final_amount = amounts[-1] / 1e18
+        profit = final_amount - AMOUNT_IN
+        if profit > 0:
+            print(f"💰 {a}->{b}->{c}->POL | Final: {final_amount:.6f} POL | Profit: {profit:.6f} POL")
+        else:
+            print(f"{a}->{b}->{c}->POL | Final: {final_amount:.6f} | No Profit")
+    except Exception as e:
+        print(f"{a}->{b}->{c}->POL | Error: {e}")
+
+# --------------------------
+# 5. MAIN LOOP
+# --------------------------
+print(f"Starting Triangular Arbitrage Scanner with {AMOUNT_IN} POL...\n")
+while True:
+    for tri in triangles:
+        check_triangle(*tri)
+    print("-" * 50)
+    time.sleep(SLEEP_INTERVAL)
+
