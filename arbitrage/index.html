@@ -1,73 +1,227 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>POL-Based Arbitrage Scanner</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <meta charset="utf-8" />
+  <title>Arb Route Finder - POL → X → POL (Demo)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <style>
-    body { font-family: Arial; margin: 20px; }
-    .log { 
-      background: #f1f1f1; 
-      padding: 10px; 
-      margin-top: 10px; 
-      font-size: 12px; 
-      max-height: 200px; 
-      overflow-y: auto; 
-      border: 1px solid #ccc;
-    }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    .profit { background: #d4edda; }
+    body { font-family: Inter, Arial, sans-serif; background:#0f1724; color:#e6eef8; margin:0; padding:20px; }
+    .container { max-width:1100px; margin:0 auto; }
+    input, textarea, button, select { font-size:14px; padding:8px; border-radius:6px; border:1px solid #334155; background:#0b1220; color:#e6eef8; width:100%; box-sizing:border-box; }
+    label { font-size:13px; color:#cbd5e1; display:block; margin-top:10px; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { padding:8px; text-align:left; border-bottom:1px solid #122032; font-size:13px; }
+    th { color:#94a3b8; }
+    .row { display:flex; gap:12px; }
+    .col { flex:1; }
+    .small { width:140px; }
+    .muted { color:#9aa7bb; font-size:12px; }
+    .green { color:#8de57d; font-weight:600; }
+    .red { color:#ff8a8a; font-weight:600; }
+    .btn { cursor:pointer; background:#1f2937; color:#e6eef8; border:1px solid #2b3a4a; }
   </style>
 </head>
 <body>
-  <h2>🌀 Arbitrage Scanner — Modal: 1 POL</h2>
-  <button id="scan">Scan Sekarang</button>
-  
-  <div id="result"></div>
-  <div class="log" id="log">ℹ️ Log akan muncul di sini...</div>
+  <div class="container">
+    <h2>Arb Route Finder — POL → X → POL (Browser Demo)</h2>
+    <p class="muted">Simulasi rute menggunakan <code>router.getAmountsOut()</code>. Tidak melakukan transaksi.</p>
 
-  <script type="module">
-    import { scanTriangularArbitrage } from "./core/scanner.js";
+    <label>RPC Provider (ubah jika perlu)</label>
+    <input id="rpcUrl" value="https://polygon-rpc.com" />
 
-    const logEl = document.getElementById("log");
-    const resultEl = document.getElementById("result");
+    <div class="row" style="margin-top:8px;">
+      <div class="col">
+        <label>Router Address (QuickSwap V2 default — ubah jika perlu)</label>
+        <input id="routerAddress" value="0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff" />
+      </div>
+      <div class="col small">
+        <label>Router ABI (minimal)</label>
+        <input id="routerABIhint" disabled value="getAmountsOut(…)" />
+      </div>
+    </div>
 
-    function log(msg) {
-      console.log(msg);
-      logEl.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${msg}</div>`;
-      logEl.scrollTop = logEl.scrollHeight; // auto-scroll
+    <label>Alamat token POL (token awal & akhir)</label>
+    <input id="polAddress" placeholder="paste alamat token POL (contoh: 0x...)" />
+
+    <label>Decimals POL (untuk display & parseUnits)</label>
+    <input id="polDecimals" value="18" />
+
+    <label>Jumlah POL untuk simulasi (contoh: 1)</label>
+    <input id="amountIn" value="1" />
+
+    <label>Daftar token intermediate (1 per baris — alamat token atau simbol jika ingin manual)</label>
+    <textarea id="intermediates" rows="6" placeholder="Isi alamat token intermediate, satu per baris. Contoh: 0x..., 0x..., dst"></textarea>
+
+    <div style="margin-top:8px; display:flex; gap:8px;">
+      <button id="scanBtn" class="btn">Scan Routes (POL → X → POL)</button>
+      <button id="clearBtn" class="btn">Clear Results</button>
+    </div>
+
+    <div id="status" style="margin-top:12px;" class="muted">Status: Idle</div>
+
+    <table id="resultTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Route</th>
+          <th>Amount In</th>
+          <th>Amount Out</th>
+          <th>Profit</th>
+          <th>Profit %</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+
+    <p class="muted" style="margin-top:14px;">
+      Tips: Jika RPC menolak (CORS) coba ganti RPC, atau jalankan lewat proxy. Untuk scan banyak token, batasi jumlah per run supaya tidak kena rate-limit.
+    </p>
+  </div>
+
+<script>
+(async function(){
+  const scanBtn = document.getElementById('scanBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statusEl = document.getElementById('status');
+  const resultTable = document.getElementById('resultTable');
+  const resultBody = document.getElementById('resultBody');
+
+  function setStatus(text) { statusEl.innerText = 'Status: ' + text; }
+
+  // Minimal router ABI with only getAmountsOut
+  const routerABI = [
+    "function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint256[] memory amounts)"
+  ];
+
+  scanBtn.addEventListener('click', async () => {
+    // read inputs
+    const rpcUrl = document.getElementById('rpcUrl').value.trim();
+    const routerAddress = document.getElementById('routerAddress').value.trim();
+    const polAddr = document.getElementById('polAddress').value.trim();
+    const polDecimals = parseInt(document.getElementById('polDecimals').value || "18");
+    const amountInStr = document.getElementById('amountIn').value.trim() || "1";
+    const intermediatesRaw = document.getElementById('intermediates').value.trim();
+
+    if (!rpcUrl || !routerAddress || !polAddr) {
+      alert('Isi RPC, router, dan alamat POL terlebih dahulu.');
+      return;
+    }
+    if (!intermediatesRaw) {
+      alert('Isi setidaknya satu token intermediate (alamat).');
+      return;
     }
 
-    document.getElementById("scan").onclick = async () => {
-      resultEl.innerHTML = "";
-      logEl.innerHTML = ""; // clear log
-      log("🔍 Memulai pemindaian arbitrase...");
+    // provider & router contract
+    setStatus('Connecting to RPC...');
+    let provider;
+    try {
+      provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      await provider.getBlockNumber(); // quick test
+    } catch (e) {
+      console.error(e);
+      setStatus('RPC connection failed — cek RPC URL / CORS (lihat console).');
+      alert('RPC connection failed. Cek console untuk detail.');
+      return;
+    }
+    const router = new ethers.Contract(routerAddress, routerABI, provider);
 
+    // build intermediate list
+    const intermediates = intermediatesRaw.split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    // parse amountIn to wei
+    let amountInWei;
+    try {
+      amountInWei = ethers.utils.parseUnits(amountInStr, polDecimals);
+    } catch (e) {
+      alert('Gagal parse amountIn — cek decimals / input.');
+      return;
+    }
+
+    // iterate intermediates, call getAmountsOut for each path [POL, X, POL]
+    setStatus('Scanning ' + intermediates.length + ' routes...');
+    resultBody.innerHTML = '';
+    resultTable.style.display = 'table';
+
+    const results = [];
+    let i = 0;
+    for (const mid of intermediates) {
+      i++;
+      setStatus(`Scanning ${i}/${intermediates.length}: ${mid} ...`);
+      // ensure mid looks like address
+      const midAddr = mid;
+      const path = [polAddr, midAddr, polAddr];
       try {
-        const results = await scanTriangularArbitrage(1.0, log); // kirim fungsi log ke scanner
-        if (results.length === 0) {
-          resultEl.innerHTML = "<p>❌ Tidak ada peluang ≥1% ditemukan.</p>";
-        } else {
-          let html = `<h3>Ditemukan ${results.length} peluang:</h3><table>
-            <tr><th>DEX</th><th>Path</th><th>Akhir (POL)</th><th>Profit (%)</th></tr>`;
-          for (const r of results) {
-            html += `<tr class="profit">
-              <td>${r.dex}</td>
-              <td>${r.path}</td>
-              <td>${r.finalPOL}</td>
-              <td>+${r.profitPct}%</td>
-            </tr>`;
-          }
-          html += "</table>";
-          resultEl.innerHTML = html;
-        }
-        log("✅ Pemindaian selesai.");
+        // get amounts out
+        const amounts = await router.getAmountsOut(amountInWei, path);
+        // amounts is an array of BigNumbers: [amountIn, midAmount, finalOut]
+        const finalOut = amounts[amounts.length - 1];
+        // convert to human readable
+        const amountOutHuman = ethers.utils.formatUnits(finalOut, polDecimals);
+        const amountInHuman = amountInStr;
+        // profit
+        const profitBN = finalOut.sub(amountInWei);
+        const profitHuman = ethers.utils.formatUnits(profitBN, polDecimals);
+        const profitPct = (Number(amountOutHuman) / Number(amountInHuman) - 1) * 100;
+        // note on price impact: quick heuristic if mid amount huge? we will not compute now
+        results.push({
+          route: `POL → ${midAddr} → POL`,
+          amountIn: amountInHuman,
+          amountOut: Number(amountOutHuman),
+          profit: Number(profitHuman),
+          profitPct
+        });
       } catch (err) {
-        log(`❌ Error utama: ${err.message || err}`);
-        resultEl.innerHTML = `<p>⚠️ Error: ${err.message || 'Lihat log di bawah'}</p>`;
+        console.warn('route failed', mid, err);
+        results.push({
+          route: `POL → ${midAddr} → POL`,
+          amountIn: amountInStr,
+          amountOut: null,
+          profit: null,
+          profitPct: null,
+          error: (err && err.message) ? err.message.split('\\n')[0] : 'error'
+        });
       }
-    };
-  </script>
+      // small delay to be polite to RPC (avoid rate limit)
+      await new Promise(res => setTimeout(res, 200));
+    }
+
+    // sort results by profit% desc (nulls last)
+    results.sort((a,b) => {
+      if (a.profitPct === null) return 1;
+      if (b.profitPct === null) return -1;
+      return b.profitPct - a.profitPct;
+    });
+
+    // render table
+    resultBody.innerHTML = '';
+    results.forEach((r, idx) => {
+      const tr = document.createElement('tr');
+      const note = r.error ? `<span class="red">Err: ${r.error}</span>` : (r.profitPct>0 ? `<span class="green">Profitable</span>` : `<span class="muted">No profit</span>`);
+      tr.innerHTML = `
+        <td>${idx+1}</td>
+        <td style="font-family:monospace">${r.route}</td>
+        <td>${r.amountIn}</td>
+        <td>${r.amountOut === null ? '-' : r.amountOut.toString()}</td>
+        <td>${r.profit === null ? '-' : Number(r.profit).toFixed(8)}</td>
+        <td>${r.profitPct === null ? '-' : Number(r.profitPct).toFixed(4) + '%'}</td>
+        <td>${note}</td>
+      `;
+      resultBody.appendChild(tr);
+    });
+
+    setStatus('Finished. Showing ' + results.length + ' routes.');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    resultBody.innerHTML = '';
+    resultTable.style.display = 'none';
+    setStatus('Cleared');
+  });
+})();
+</script>
 </body>
 </html>
