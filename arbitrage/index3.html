@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>WPOL Arbitrage Route Scanner (3–4 hop)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #071021;
+      --card-bg: #0b1a2f;
+      --text: #e6eef8;
+      --text-muted: #84a2bd;
+      --border: #203240;
+      --green: #8de57d;
+      --red: #ff8a8a;
+      --yellow: #ffd166;
+      --button-bg: #1a2d47;
+      --button-hover: #253d5a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    input, select, button {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 14px;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4a6fa5;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .col {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .small {
+      flex: 0 0 120px;
+    }
+
+    button {
+      background: var(--button-bg);
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: var(--button-hover);
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-left: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: #7fa0bf;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .profit-pos { color: var(--green); font-weight: 700; }
+    .profit-neg { color: var(--red); font-weight: 700; }
+    .profit-zero { color: var(--text-muted); }
+
+    .route-path {
+      font-family: monospace;
+      font-size: 12px;
+      background: rgba(0,0,0,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .note-profitable::before {
+      content: "✓";
+      color: var(--green);
+      margin-right: 4px;
+    }
+
+    .note-unprofitable::before {
+      content: "✗";
+      color: var(--red);
+      margin-right: 4px;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    @media (max-width: 600px) {
+      .row { flex-direction: column; }
+      .small { flex: 1; }
+      .controls { flex-direction: column; align-items: flex-start; }
+      .status { margin-left: 0; margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>WPOL Arbitrage Route Scanner (3–4 hop)</h1>
+  <p class="subtitle">WPOL dipakai sebagai token awal & akhir otomatis. Hanya mendeteksi (tidak eksekusi).</p>
+
+  <label for="rpc">RPC Endpoint (ganti jika ada CORS/rate limit)</label>
+  <input id="rpc" value="https://polygon-rpc.com" />
+
+  <div class="row">
+    <div class="col">
+      <label for="amount">Jumlah WPOL untuk uji (mis. 1)</label>
+      <input id="amount" value="1" />
+    </div>
+    <div class="col small">
+      <label for="delay">Delay ms / call</label>
+      <input id="delay" value="200" type="number" min="0" />
+    </div>
+    <div class="col small">
+      <label for="filterProfitable">Tampilkan hanya profitable?</label>
+      <select id="filterProfitable">
+        <option value="false">Tidak</option>
+        <option value="true">Ya</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="start">🔎 Mulai Scan (3–4 hop)</button>
+    <button id="clear">Clear</button>
+    <span class="status" id="status">Status: idle</span>
+  </div>
+
+  <table id="tbl" style="display: none;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Route</th>
+        <th>Output (WPOL)</th>
+        <th>Profit</th>
+        <th>Profit %</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody id="tb"></tbody>
+  </table>
+
+  <p class="footer-note">
+    Catatan: WPOL = Wrapped MATIC (18 decimals). RPC publik bisa terkena CORS atau rate-limit — jika error, coba ganti ke
+    <a href="https://llamarpc.com" target="_blank" style="color:#4a90e2">LlamaRPC</a>,
+    <a href="https://1rpc.io/polygon" target="_blank" style="color:#4a90e2">1RPC</a>, atau gunakan proxy.
+  </p>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    (async () => {
+      const WPOL = "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270".toLowerCase();
+      const TOKENS = {
+        "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270": "WPOL",
+        "0xc2132d05d31c914a87c6611c10748aeb04b58e8f": "USDT",
+        "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063": "DAI",
+        "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619": "WETH",
+        "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": "USDC",
+      };
+      const TOKEN_SYMBOL = Object.fromEntries(
+        Object.entries(TOKENS).map(([k, v]) => [k.toLowerCase(), v])
+      );
+
+      const routerAddr = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
+      const routerABI = ["function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"];
+
+      const startBtn = document.getElementById('start');
+      const clearBtn = document.getElementById('clear');
+      const statusEl = document.getElementById('status');
+      const tbl = document.getElementById('tbl');
+      const tb = document.getElementById('tb');
+
+      function setStatus(text) {
+        statusEl.textContent = text;
+      }
+
+      function sleep(ms) {
+        return new Promise(r => setTimeout(r, ms));
+      }
+
+      startBtn.addEventListener('click', async () => {
+        const rpc = document.getElementById('rpc').value.trim().replace(/\s+$/, '');
+        const amountStr = document.getElementById('amount').value.trim() || "1";
+        const delayMs = parseInt(document.getElementById('delay').value || "200", 10);
+        const onlyProfit = document.getElementById('filterProfitable').value === 'true';
+
+        if (!rpc) {
+          alert("RPC URL tidak boleh kosong.");
+          return;
+        }
+
+        let amountInWei;
+        try {
+          amountInWei = ethers.utils.parseUnits(amountStr, 18);
+        } catch (e) {
+          alert("Jumlah WPOL tidak valid.");
+          return;
+        }
+
+        let provider;
+        try {
+          provider = new ethers.providers.JsonRpcProvider(rpc);
+          await provider.getBlockNumber();
+        } catch (e) {
+          console.error(e);
+          alert("Gagal terhubung ke RPC. Coba ganti endpoint.");
+          setStatus("Error: RPC gagal");
+          return;
+        }
+
+        const router = new ethers.Contract(routerAddr, routerABI, provider);
+        const intermediates = Object.keys(TOKENS).map(k => k.toLowerCase()).filter(a => a !== WPOL);
+
+        const routes = [];
+
+        // 3-hop: WPOL → A → B → WPOL
+        for (let i = 0; i < intermediates.length; i++) {
+          for (let j = 0; j < intermediates.length; j++) {
+            if (i === j) continue;
+            routes.push([WPOL, intermediates[i], intermediates[j], WPOL]);
+          }
+        }
+
+        // 4-hop: WPOL → A → B → C → WPOL
+        for (let i = 0; i < intermediates.length; i++) {
+          for (let j = 0; j < intermediates.length; j++) {
+            for (let k = 0; k < intermediates.length; k++) {
+              if (i === j || j === k || i === k) continue;
+              routes.push([WPOL, intermediates[i], intermediates[j], intermediates[k], WPOL]);
+            }
+          }
+        }
+
+        tb.innerHTML = '';
+        tbl.style.display = 'table';
+        setStatus(`Memindai ${routes.length} rute...`);
+
+        let resultIndex = 0;
+        for (const path of routes) {
+          resultIndex++;
+          setStatus(`Memindai ${resultIndex}/${routes.length} (${path.length - 2} hop)...`);
+
+          try {
+            const amounts = await router.getAmountsOut(amountInWei, path);
+            const finalOut = amounts[amounts.length - 1];
+            const outHuman = parseFloat(ethers.utils.formatUnits(finalOut, 18));
+            const inHuman = parseFloat(amountStr);
+            const profit = outHuman - inHuman;
+            const profitPct = (profit / inHuman) * 100;
+
+            const names = path.map(a => TOKEN_SYMBOL[a] || 'UNK');
+
+            if (onlyProfit && profitPct <= 0) continue;
+
+            const tr = document.createElement('tr');
+
+            const profitClass = profit > 0 ? 'profit-pos' : profit < 0 ? 'profit-neg' : 'profit-zero';
+            const noteClass = profit > 0 ? 'note-profitable' : 'note-unprofitable';
+
+            tr.innerHTML = `
+              <td>${tb.children.length + 1}</td>
+              <td><span class="route-path">${names.join(' → ')}</span></td>
+              <td>${outHuman.toFixed(8)}</td>
+              <td class="${profitClass}">${profit.toFixed(8)}</td>
+              <td class="${profitClass}">${profitPct.toFixed(4)}%</td>
+              <td class="${noteClass}"></td>
+            `;
+            tb.appendChild(tr);
+          } catch (e) {
+            // Skip routes with no liquidity or errors
+          }
+
+          await sleep(delayMs);
+        }
+
+        setStatus(tb.children.length > 0 ? "Selesai — ditemukan hasil" : "Selesai — tidak ada hasil");
+      });
+
+      clearBtn.addEventListener('click', () => {
+        tb.innerHTML = '';
+        tbl.style.display = 'none';
+        setStatus('Dibersihkan');
+      });
+    })();
+  </script>
+</body>
+</html>
