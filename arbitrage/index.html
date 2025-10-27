@@ -3,67 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Polygon Arbitrage Route Scanner</title>
+  <title>Polygon Multi-Hop Arbitrage Scanner</title>
 </head>
 <body style="font-family:sans-serif;background:#0d1117;color:white;padding:20px;">
-  <h2>🔍 Polygon Arbitrage Route Scanner (Manual)</h2>
-  <p>Cari rute swap yang paling menguntungkan dari token awal ke token akhir.</p>
+  <h2>🔁 Polygon Multi-Hop Route Scanner</h2>
+  <p>Uji kombinasi rute hingga 4 hop (misalnya WPOL → USDT → DAI → WETH → WPOL).</p>
 
   <label>Token Awal (address):</label><br>
   <input id="tokenIn" type="text" value="0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270" size="60"><br><br>
 
   <label>Token Akhir (address):</label><br>
-  <input id="tokenOut" type="text" value="0xbA9a6a558eB68Bd7cB66e23e19Bf6EaeDbCC0163" size="60"><br><br>
+  <input id="tokenOut" type="text" value="0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270" size="60"><br><br>
 
   <label>Jumlah (tokenIn):</label><br>
   <input id="amount" type="number" value="1" step="0.1"><br><br>
 
-  <button id="scan">🔎 Scan Route</button>
+  <button id="scan">🔎 Scan Multi-Hop</button>
 
   <pre id="result" style="background:#111;padding:10px;border-radius:8px;margin-top:15px;"></pre>
 
-  <!-- Tambahkan ethers.js CDN -->
+  <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <script>
     const provider = new ethers.providers.JsonRpcProvider("https://polygon-rpc.com");
-    const quickswapRouter = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"; // QuickSwap V2 Router
-    const abi = [
-      "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
-    ];
-    const router = new ethers.Contract(quickswapRouter, abi, provider);
+    const routerAddr = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"; // QuickSwap V2 Router
+    const abi = ["function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"];
+    const router = new ethers.Contract(routerAddr, abi, provider);
+
+    // Beberapa token populer di Polygon
+    const TOKENS = {
+      WPOL: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+      USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+      DAI:  "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+      WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+      USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+    };
 
     document.getElementById("scan").addEventListener("click", async () => {
       const tokenIn = document.getElementById("tokenIn").value.trim();
       const tokenOut = document.getElementById("tokenOut").value.trim();
       const amount = document.getElementById("amount").value;
       const resultBox = document.getElementById("result");
-      resultBox.textContent = "Scanning route...";
+      resultBox.textContent = "Scanning multi-hop routes...\n";
 
-      try {
-        // Route tunggal langsung (tokenIn -> tokenOut)
-        const path1 = [tokenIn, tokenOut];
-        const amountInWei = ethers.utils.parseUnits(amount, 18); // asumsi 18 desimal
-        const amounts1 = await router.getAmountsOut(amountInWei, path1);
-        const out1 = ethers.utils.formatUnits(amounts1[1], 18);
+      const amountInWei = ethers.utils.parseUnits(amount, 18);
+      const intermediates = [TOKENS.USDT, TOKENS.DAI, TOKENS.WETH, TOKENS.USDC];
+      const routes = [];
 
-        // Route lewat USDT (misalnya)
-        const USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
-        const path2 = [tokenIn, USDT, tokenOut];
-        let out2 = "n/a";
+      // 2-hop: tokenIn -> X -> tokenOut
+      intermediates.forEach(i1 => {
+        routes.push([tokenIn, i1, tokenOut]);
+      });
+
+      // 3-hop: tokenIn -> X -> Y -> tokenOut
+      for (let i = 0; i < intermediates.length; i++) {
+        for (let j = 0; j < intermediates.length; j++) {
+          if (i !== j) routes.push([tokenIn, intermediates[i], intermediates[j], tokenOut]);
+        }
+      }
+
+      // 4-hop: tokenIn -> X -> Y -> Z -> tokenOut
+      for (let i = 0; i < intermediates.length; i++) {
+        for (let j = 0; j < intermediates.length; j++) {
+          for (let k = 0; k < intermediates.length; k++) {
+            if (i !== j && j !== k && i !== k)
+              routes.push([tokenIn, intermediates[i], intermediates[j], intermediates[k], tokenOut]);
+          }
+        }
+      }
+
+      const results = [];
+      for (const path of routes) {
         try {
-          const amounts2 = await router.getAmountsOut(amountInWei, path2);
-          out2 = ethers.utils.formatUnits(amounts2[amounts2.length - 1], 18);
-        } catch (e) {}
+          const amounts = await router.getAmountsOut(amountInWei, path);
+          const out = ethers.utils.formatUnits(amounts[amounts.length - 1], 18);
+          results.push({ path, out: parseFloat(out) });
+          resultBox.textContent += `${path.join(" -> ")} = ${out}\n`;
+        } catch (e) {
+          // skip routes that fail (no liquidity)
+        }
+      }
 
-        resultBox.textContent =
-          `Hasil estimasi:\n\n` +
-          `Langsung (${path1.join(" -> ")}): ${out1}\n` +
-          `Lewat USDT (${path2.join(" -> ")}): ${out2}\n` +
-          `\nRute terbaik: ${out2 > out1 ? "Lewat USDT" : "Langsung"}`;
-      } catch (err) {
-        console.error(err);
-        resultBox.textContent = "Error: " + err.message;
+      // urutkan dari output terbesar
+      results.sort((a, b) => b.out - a.out);
+      const best = results[0];
+      if (best) {
+        resultBox.textContent += `\n🏆 Rute terbaik:\n${best.path.join(" -> ")}\nOutput: ${best.out}`;
+      } else {
+        resultBox.textContent += `\n❌ Tidak ada rute yang valid.`;
       }
     });
   </script>
