@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polygon Arbitrage Route Scanner</title>
+</head>
+<body style="font-family:sans-serif;background:#0d1117;color:white;padding:20px;">
+  <h2>💱 Polygon Arbitrage Route Scanner</h2>
+  <p>Menampilkan nama token saja untuk rute 2–4 hop</p>
+
+  <label>Token Awal:</label><br>
+  <select id="tokenIn">
+    <option value="WPOL">WPOL</option>
+    <option value="USDT">USDT</option>
+    <option value="DAI">DAI</option>
+    <option value="WETH">WETH</option>
+    <option value="USDC">USDC</option>
+  </select><br><br>
+
+  <label>Token Akhir:</label><br>
+  <select id="tokenOut">
+    <option value="WPOL">WPOL</option>
+    <option value="USDT">USDT</option>
+    <option value="DAI">DAI</option>
+    <option value="WETH">WETH</option>
+    <option value="USDC">USDC</option>
+  </select><br><br>
+
+  <label>Jumlah (tokenIn):</label><br>
+  <input id="amount" type="number" value="1" step="0.1"><br><br>
+
+  <button id="scan">🔎 Scan Routes</button>
+
+  <pre id="result" style="background:#111;padding:10px;border-radius:8px;margin-top:15px;max-height:500px;overflow:auto;"></pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    const provider = new ethers.providers.JsonRpcProvider("https://polygon-rpc.com");
+    const routerAddr = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"; // QuickSwap V2
+    const abi = ["function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"];
+    const router = new ethers.Contract(routerAddr, abi, provider);
+
+    const TOKENS = {
+      WPOL: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+      USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+      DAI:  "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+      WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+      USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+    };
+
+    const SYMBOLS = Object.fromEntries(Object.entries(TOKENS).map(([k,v]) => [v.toLowerCase(), k]));
+
+    document.getElementById("scan").addEventListener("click", async () => {
+      const tokenIn = TOKENS[document.getElementById("tokenIn").value];
+      const tokenOut = TOKENS[document.getElementById("tokenOut").value];
+      const amount = document.getElementById("amount").value;
+      const resultBox = document.getElementById("result");
+      resultBox.textContent = "🔄 Scanning possible routes...\n";
+
+      const amountInWei = ethers.utils.parseUnits(amount, 18);
+      const intermediates = Object.values(TOKENS);
+      const routes = [];
+
+      // 2-hop
+      intermediates.forEach(i1 => {
+        routes.push([tokenIn, i1, tokenOut]);
+      });
+
+      // 3-hop
+      for (let i = 0; i < intermediates.length; i++) {
+        for (let j = 0; j < intermediates.length; j++) {
+          if (i !== j) routes.push([tokenIn, intermediates[i], intermediates[j], tokenOut]);
+        }
+      }
+
+      // 4-hop
+      for (let i = 0; i < intermediates.length; i++) {
+        for (let j = 0; j < intermediates.length; j++) {
+          for (let k = 0; k < intermediates.length; k++) {
+            if (i !== j && j !== k && i !== k)
+              routes.push([tokenIn, intermediates[i], intermediates[j], intermediates[k], tokenOut]);
+          }
+        }
+      }
+
+      const results = [];
+      for (const path of routes) {
+        try {
+          const amounts = await router.getAmountsOut(amountInWei, path);
+          const out = ethers.utils.formatUnits(amounts[amounts.length - 1], 18);
+          const names = path.map(a => SYMBOLS[a.toLowerCase()] || "UNK");
+          results.push({ path: names, out: parseFloat(out) });
+          resultBox.textContent += `${names.join(" → ")} = ${out}\n`;
+        } catch (e) {
+          // skip invalid pairs
+        }
+      }
+
+      results.sort((a, b) => b.out - a.out);
+      const best = results[0];
+      if (best) {
+        resultBox.textContent += `\n🏆 Rute terbaik:\n${best.path.join(" → ")}\nOutput: ${best.out}`;
+      } else {
+        resultBox.textContent += `\n❌ Tidak ada rute valid.`;
+      }
+    });
+  </script>
+</body>
+</html>
