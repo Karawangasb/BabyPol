@@ -1,110 +1,204 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Polygon Arbitrage Route Scanner</title>
+  <meta charset="utf-8" />
+  <title>WPOL Arbitrage Route Scanner (2-4 hop)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,Arial,sans-serif;background:#071021;color:#e6eef8;padding:18px}
+    h1{margin:0 0 12px 0}
+    label{font-size:13px;color:#9fb1c9}
+    input,select,button,textarea{padding:8px;border-radius:6px;border:1px solid #203240;background:#071828;color:#e6eef8}
+    .row{display:flex;gap:8px;margin-top:8px}
+    .col{flex:1}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px solid #0f2433;font-size:13px;text-align:left}
+    th{color:#7fa0bf}
+    .green{color:#8de57d;font-weight:700}
+    .red{color:#ff8a8a;font-weight:700}
+    .muted{color:#84a2bd;font-size:13px}
+    .small{width:120px}
+  </style>
 </head>
-<body style="font-family:sans-serif;background:#0d1117;color:white;padding:20px;">
-  <h2>💱 Polygon Arbitrage Route Scanner</h2>
-  <p>Menampilkan nama token saja untuk rute 2–4 hop</p>
+<body>
+  <h1>WPOL Arbitrage Route Scanner (2–4 hop)</h1>
+  <p class="muted">WPOL dipakai sebagai token awal & akhir otomatis. Hanya mendeteksi (tidak eksekusi).</p>
 
-  <label>Token Awal:</label><br>
-  <select id="tokenIn">
-    <option value="WPOL">WPOL</option>
-    <option value="USDT">USDT</option>
-    <option value="DAI">DAI</option>
-    <option value="WETH">WETH</option>
-    <option value="USDC">USDC</option>
-  </select><br><br>
+  <label>RPC (ganti jika ada CORS/rate limit)</label>
+  <input id="rpc" value="https://polygon-rpc.com" />
 
-  <label>Token Akhir:</label><br>
-  <select id="tokenOut">
-    <option value="WPOL">WPOL</option>
-    <option value="USDT">USDT</option>
-    <option value="DAI">DAI</option>
-    <option value="WETH">WETH</option>
-    <option value="USDC">USDC</option>
-  </select><br><br>
+  <div class="row">
+    <div class="col">
+      <label>Jumlah WPOL untuk uji (mis. 1)</label>
+      <input id="amount" value="1" />
+    </div>
+    <div class="col small">
+      <label>Delay ms / call</label>
+      <input id="delay" value="200" />
+    </div>
+    <div class="col small">
+      <label>Tampilkan hanya profitable?</label>
+      <select id="filterProfitable"><option value="false">Tidak</option><option value="true">Ya</option></select>
+    </div>
+  </div>
 
-  <label>Jumlah (tokenIn):</label><br>
-  <input id="amount" type="number" value="1" step="0.1"><br><br>
+  <div style="margin-top:10px">
+    <button id="start">🔎 Mulai Scan (2–4 hop)</button>
+    <button id="clear">Clear</button>
+    <span id="status" class="muted" style="margin-left:12px">Status: idle</span>
+  </div>
 
-  <button id="scan">🔎 Scan Routes</button>
+  <table id="tbl" style="display:none">
+    <thead><tr>
+      <th>#</th><th>Route (nama token)</th><th>Output (WPOL)</th><th>Profit</th><th>Profit %</th><th>Note</th>
+    </tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
 
-  <pre id="result" style="background:#111;padding:10px;border-radius:8px;margin-top:15px;max-height:500px;overflow:auto;"></pre>
+  <p class="muted" style="margin-top:12px">
+    Catatan: WPOL = Wrapped MATIC (18 decimals). RPC publik dapat ubah CORS atau rate-limit — kalau error, ganti ke LlamaRPC / 1rpc / gunakan proxy.
+  </p>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
-    const provider = new ethers.providers.JsonRpcProvider("https://polygon-rpc.com");
-    const routerAddr = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"; // QuickSwap V2
-    const abi = ["function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"];
-    const router = new ethers.Contract(routerAddr, abi, provider);
+    (async()=> {
+      const WPOL = "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270".toLowerCase();
+      // Daftar token populer (alamat -> symbol)
+      const TOKENS = {
+        "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270":"WPOL",
+        "0xc2132d05d31c914a87c6611c10748aeb04b58e8f":"USDT",
+        "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063":"DAI",
+        "0x7ceb23fd6bC0adD59E62ac25578270cFf1b9f619":"WETH",
+        "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":"USDC",
+        // tambah token lain yg mau kamu cek
+      };
+      // lowercase mapping for easy lookup
+      const TOKEN_SYMBOL = Object.fromEntries(Object.entries(TOKENS).map(([k,v])=>[k.toLowerCase(),v]));
 
-    const TOKENS = {
-      WPOL: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-      USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-      DAI:  "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
-      WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
-      USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-    };
+      const routerAddr = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"; // QuickSwap V2 Router
+      const routerABI = ["function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"];
 
-    const SYMBOLS = Object.fromEntries(Object.entries(TOKENS).map(([k,v]) => [v.toLowerCase(), k]));
+      const startBtn = document.getElementById('start');
+      const clearBtn = document.getElementById('clear');
+      const statusEl = document.getElementById('status');
+      const tbl = document.getElementById('tbl');
+      const tb = document.getElementById('tb');
 
-    document.getElementById("scan").addEventListener("click", async () => {
-      const tokenIn = TOKENS[document.getElementById("tokenIn").value];
-      const tokenOut = TOKENS[document.getElementById("tokenOut").value];
-      const amount = document.getElementById("amount").value;
-      const resultBox = document.getElementById("result");
-      resultBox.textContent = "🔄 Scanning possible routes...\n";
+      function setStatus(t){ statusEl.innerText = 'Status: '+t; }
 
-      const amountInWei = ethers.utils.parseUnits(amount, 18);
-      const intermediates = Object.values(TOKENS);
-      const routes = [];
+      function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-      // 2-hop
-      intermediates.forEach(i1 => {
-        routes.push([tokenIn, i1, tokenOut]);
-      });
+      startBtn.addEventListener('click', async ()=>{
+        const rpc = document.getElementById('rpc').value.trim();
+        const amount = document.getElementById('amount').value.trim() || "1";
+        const delayMs = parseInt(document.getElementById('delay').value || "200");
+        const onlyProfit = document.getElementById('filterProfitable').value === 'true';
 
-      // 3-hop
-      for (let i = 0; i < intermediates.length; i++) {
-        for (let j = 0; j < intermediates.length; j++) {
-          if (i !== j) routes.push([tokenIn, intermediates[i], intermediates[j], tokenOut]);
+        // provider & router
+        setStatus('Connecting RPC...');
+        let provider;
+        try {
+          provider = new ethers.providers.JsonRpcProvider(rpc);
+          await provider.getBlockNumber();
+        } catch (e) {
+          console.error(e);
+          alert('RPC connection failed. Cek console / ganti RPC.');
+          setStatus('RPC error');
+          return;
         }
-      }
+        const router = new ethers.Contract(routerAddr, routerABI, provider);
 
-      // 4-hop
-      for (let i = 0; i < intermediates.length; i++) {
-        for (let j = 0; j < intermediates.length; j++) {
-          for (let k = 0; k < intermediates.length; k++) {
-            if (i !== j && j !== k && i !== k)
-              routes.push([tokenIn, intermediates[i], intermediates[j], intermediates[k], tokenOut]);
+        // build intermediate list (exclude WPOL)
+        const intermediates = Object.keys(TOKENS).map(k=>k.toLowerCase()).filter(a=>a!==WPOL);
+
+        // construct routes 3-4 hop, ensure no identical adjacent addresses and no duplicate token in same path (optional)
+        const routes = [];
+
+        // 3-hop: WPOL -> A -> B -> WPOL (A != B)
+        for (let i=0;i<intermediates.length;i++){
+          for (let j=0;j<intermediates.length;j++){
+            if (i===j) continue;
+            const A = intermediates[i], B = intermediates[j];
+            if (A===WPOL||B===WPOL) continue;
+            routes.push([WPOL, A, B, WPOL]);
           }
         }
-      }
-
-      const results = [];
-      for (const path of routes) {
-        try {
-          const amounts = await router.getAmountsOut(amountInWei, path);
-          const out = ethers.utils.formatUnits(amounts[amounts.length - 1], 18);
-          const names = path.map(a => SYMBOLS[a.toLowerCase()] || "UNK");
-          results.push({ path: names, out: parseFloat(out) });
-          resultBox.textContent += `${names.join(" → ")} = ${out}\n`;
-        } catch (e) {
-          // skip invalid pairs
+        // 4-hop: WPOL -> A -> B -> C -> WPOL (A,B,C distinct)
+        for (let i=0;i<intermediates.length;i++){
+          for (let j=0;j<intermediates.length;j++){
+            for (let k=0;k<intermediates.length;k++){
+              if (i===j||j===k||i===k) continue;
+              const A=intermediates[i], B=intermediates[j], C=intermediates[k];
+              routes.push([WPOL, A, B, C, WPOL]);
+            }
+          }
         }
-      }
 
-      results.sort((a, b) => b.out - a.out);
-      const best = results[0];
-      if (best) {
-        resultBox.textContent += `\n🏆 Rute terbaik:\n${best.path.join(" → ")}\nOutput: ${best.out}`;
-      } else {
-        resultBox.textContent += `\n❌ Tidak ada rute valid.`;
-      }
-    });
+        // parse input amount (assume WPOL decimals = 18)
+        let amountInWei;
+        try { amountInWei = ethers.utils.parseUnits(amount, 18); }
+        catch(e){ alert('Invalid amount'); return; }
+
+        tb.innerHTML = ''; tbl.style.display='table';
+        setStatus(`Scanning ${routes.length} routes...`);
+
+        const results = [];
+        let idx = 0;
+        for (const path of routes) {
+          idx++;
+          setStatus(`Scanning ${idx}/${routes.length} (${path.length-2} hop)...`);
+          // skip paths with identical adjacent addresses (should not happen given construction)
+          let skip=false;
+          for (let s=0;s<path.length-1;s++){
+            if (path[s]===path[s+1]) { skip=true; break; }
+          }
+          if (skip) continue;
+
+          try {
+            const amounts = await router.getAmountsOut(amountInWei, path);
+            const finalOut = amounts[amounts.length-1];
+            const outHuman = parseFloat(ethers.utils.formatUnits(finalOut, 18));
+            const inHuman = parseFloat(amount);
+            const profit = outHuman - inHuman;
+            const profitPct = (profit / inHuman) * 100;
+
+            // map names
+            const names = path.map(a => TOKEN_SYMBOL[a.toLowerCase()] || (a===WPOL ? 'WPOL' : 'UNK'));
+
+            // optional filter: only show profitable if toggle on
+            if (onlyProfit && profitPct <= 0) {
+              // skip
+            } else {
+              results.push({path:names,out:outHuman,profit,profitPct});
+              // render row
+              const tr = document.createElement('tr');
+              const note = profitPct>0 ? `<span class="green">Profitable</span>` : `<span class="red">No profit</span>`;
+              tr.innerHTML = `<td>${tb.children.length+1}</td>
+                <td style="font-family:monospace">${names.join(' → ')}</td>
+                <td>${outHuman.toFixed(8)}</td>
+                <td>${profit>0?profit.toFixed(8):profit.toFixed(8)}</td>
+                <td>${profitPct>0?profitPct.toFixed(4)+'%':profitPct.toFixed(4)+'%'}</td>
+                <td>${note}</td>`;
+              tb.appendChild(tr);
+            }
+          } catch(e) {
+            // ignore paths with no liquidity or revert (common)
+          }
+          await sleep(delayMs);
+        }
+
+        // highlight best if exists
+        if (tb.children.length>0) {
+          // optionally scroll / focus
+        } else {
+          // nothing found
+        }
+        setStatus('Finished scan');
+      });
+
+      clearBtn.addEventListener('click', ()=>{ tb.innerHTML=''; tbl.style.display='none'; setStatus('Cleared'); });
+
+    })();
   </script>
 </body>
 </html>
