@@ -8,7 +8,7 @@
     <title><data:blog.pageTitle/></title>
     
     <!-- Favicon -->
-    <link href='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/logo.png' rel='icon' type='image/png'/>
+    <link href='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/logobpol_32x32.svg' rel='icon' type='image/png'/>
     
     <!-- CSS Styles -->
     <b:skin><![CDATA[/* Base Styles */
@@ -123,7 +123,7 @@ body {
                     <header class='fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-purple-100 shadow-sm'>
                         <div class='container mx-auto px-6 py-4 flex justify-between items-center'>
                             <div class='flex items-center gap-3'>
-                                <img alt='BabyPol Logo' class='h-10 w-10' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/logo.png'/>
+                                <img alt='BabyPol Logo' class='h-10 w-10' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/logobpol.svg'/>
                                 <h1 class='text-2xl font-bold gradient-text'>BabyPol</h1>
                             </div>
                             <nav class='hidden md:flex space-x-8 text-sm font-medium'>
@@ -157,11 +157,16 @@ body {
                                 Born from Polygon, powered by memes. A community-driven token that unites fun, creativity, and love for the purple chain.
                             </p>
                             <div class='flex flex-wrap justify-center gap-4 fade-in-up'>
-                                <a class='btn-primary' href='https://x.com/Babypol_bpol' target='_blank'>Join Our Community</a>
-                                <a class='btn-secondary' href='https://polygonscan.com/token/0x3fb009dd27fbc4e2cf183b65279363967a1e8182' target='_blank'>View on PolygonScan</a>
-                                <a class='btn-secondary' href='https://drive.google.com/file/d/149GdU6_or_Yl-rNoYb2Q5TiIyDBJXDnO/view?usp=drive_link' target='_blank'>
-                                    📄 Download Litepaper
-                                </a>
+                                <a class='btn-secondary' href='https://www.pinksale.finance/pinklock/polygon/record/1006280' target='_blank'>
+                                   <img alt='pinksale' class='h-8 w-18' src='https://img.thegrid.id/upload/844e49c53163a48a618c36cadd351280450b5a37c8d261251de232fdb0daac82.png'/></a>                     
+                                <a class='btn-secondary' href='https://polygonscan.com/token/0x3fb009dd27fbc4e2cf183b65279363967a1e8182' target='_blank'>
+                                  <img alt='polygonscan' class='h-8 w-18' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/polygonscan.svg'/></a>                                
+								<a class='btn-secondary' href='https://www.geckoterminal.com/polygon_pos/pools/0x03202e752393381669b3cddc7c4cb6b741495715' target='_blank'>
+                                  <img alt='GeckoTerminal' class='h-8 w-18' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/geckoterminal_light.png'/></a>
+                                <a class='btn-secondary' href='https://dapp.quickswap.exchange/swap/best/ETH/0x3fB009dd27fBc4e2cf183b65279363967a1E8182?chainId=137' target='_blank'>
+                                  <img alt='quickswap-logo' class='h-8 w-18' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/quickswap-logo.svg'/></a>    
+                             	<a class='btn-secondary' href='https://opensea.io/Babypol' target='_blank'>
+                                  <img alt='OpenSea' class='h-8 w-18' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/OpenSea.svg'/></a>
                             </div>
                         </div>
                     </section>
@@ -293,9 +298,12 @@ body {
                         <div class='container'>
                             <h3 class='text-3xl font-bold mb-12 text-purple-600'>Join Our Community</h3>
                             <div class='flex flex-wrap justify-center gap-6'>
-                                <a class='btn-primary' href='https://x.com/Babypol_bpol' target='_blank'>Twitter/X</a>
-                                <a class='btn-primary' href='https://t.me/+E0nQ6X-2VcwzODJk' target='_blank'>Telegram</a>
-                                <a class='btn-primary' href='mailto:contact@babypol.fun'>Email</a>
+                                <a class='btn-secondary' href='https://x.com/Babypol_bpol' target='_blank'>
+                                   <img alt='Twitter-X' class='h-8 w-18' src='https://raw.githubusercontent.com/Karawangasb/BabyPol/main/X.png'/></a>
+                                <a class='btn-secondary' href='https://t.me/+E0nQ6X-2VcwzODJk' target='_blank'>
+                                   <img alt='Telegram' class='h-8 w-18' src='https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg'/></a>
+                                <a class='btn-secondary' href='mailto:contact@babypol.fun'>
+                              	   <img alt='mail' class='h-8 w-18' src='https://upload.wikimedia.org/wikipedia/commons/3/39/Google_Mail.svg'/></a>
                             </div>
                         </div>
                     </section>
