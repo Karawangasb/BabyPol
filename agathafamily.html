@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AGATHA FAMILY | Digital Infrastructure</title>
+  <meta name="description" content="AGATHA FAMILY CORPORATION GROUP BASE IDC – Digital Infrastructure & Network Services" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='4' y='4' width='92' height='92' rx='18' fill='%2300b3ff'/><text x='50' y='64' font-size='56' text-anchor='middle' fill='white' font-family='Arial'>A</text></svg>">
+
+  <style>
+    :root {
+      --bg: #05070c;
+      --bg-2: #02030a;
+      --text: #e6f0ff;
+      --muted: #9fb3c8;
+      --accent: #00b3ff;
+      --accent-2: #00ffd5;
+      --accent-3: #7c7cff;
+      --card: #0b1020;
+      --glass: rgba(255,255,255,.04);
+      --border: rgba(0,179,255,.25);
+      --shadow: 0 20px 60px rgba(0,179,255,.18);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(900px 600px at 80% -10%, rgba(0,179,255,.25), transparent 60%),
+        radial-gradient(700px 500px at -10% 10%, rgba(0,255,213,.22), transparent 55%),
+        linear-gradient(180deg, var(--bg), var(--bg-2));
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    .container { width: min(1200px, 92%); margin: auto; }
+
+    /* NAVBAR */
+    header {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(10px) saturate(140%);
+      background: rgba(5,7,12,.65);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav {
+      display: flex; justify-content: space-between; align-items: center;
+      height: 70px;
+    }
+
+    .brand { display: flex; gap: 12px; align-items: center; font-weight: 700; }
+
+    .logo {
+      width: 42px; height: 42px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 25px rgba(0,179,255,.6);
+    }
+
+    .navlinks { display: flex; gap: 18px; align-items: center; }
+    .navlinks a { opacity: .85; padding: 8px 12px; border-radius: 12px; }
+    .navlinks a:hover { opacity: 1; background: var(--glass); }
+
+    /* HERO */
+    .hero { padding: 100px 0 80px; }
+    .hero-grid {
+      display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex; gap: 10px; align-items: center;
+      padding: 8px 14px; border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--glass);
+      font-size: 14px;
+      color: var(--accent-2);
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 15px var(--accent-2); }
+
+    h1 {
+      font-size: clamp(36px, 4.5vw, 64px);
+      line-height: 1.05;
+      margin: 14px 0 12px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .lead { font-size: 18px; color: var(--muted); max-width: 520px; }
+
+    /* CARD */
+    .card {
+      background: linear-gradient(180deg, rgba(11,16,32,.95), rgba(11,16,32,.75));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card { padding: 18px; position: relative; }
+    .hero-card img { border-radius: 14px; width: 100%; }
+
+    /* SECTION */
+    section { padding: 80px 0; }
+    .section-title { font-size: 36px; margin-bottom: 10px; }
+    .section-sub { color: var(--muted); margin-bottom: 40px; }
+
+    /* SERVICES */
+    .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; }
+
+    .service {
+      padding: 22px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .service::after {
+      content: "";
+      position: absolute;
+      inset: auto -40% -40% auto;
+      width: 220px; height: 220px;
+      background: radial-gradient(circle, rgba(0,179,255,.35), transparent 60%);
+    }
+
+    .service h3 { margin-top: 0; color: var(--accent); }
+    .service p { color: var(--muted); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 50px 0 60px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <div class="brand">
+      <div class="logo">A</div>
+      <span>AGATHA FAMILY</span>
+    </div>
+    <nav class="navlinks">
+      <a href="#about">Tentang</a>
+      <a href="#services">Layanan</a>
+      <a href="#contact">Kontak</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero container">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow"><span class="dot"></span> AGATHA FAMILY IDC</div>
+      <h1>
+        Digital <span class="gradient-text">Infrastructure</span><br />
+        & Global Network Services
+      </h1>
+      <p class="lead">Menghubungkan bisnis Anda dengan infrastruktur digital, jaringan aman, dan sistem terdistribusi kelas enterprise.</p>
+    </div>
+    <div class="card hero-card">
+      <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=900&auto=format&fit=crop" alt="Data Center" />
+    </div>
+  </div>
+</section>
+
+<section class="container" id="services">
+  <h2 class="section-title">Layanan</h2>
+  <p class="section-sub">Solusi teknologi modern untuk infrastruktur digital</p>
+
+  <div class="grid">
+    <div class="service">
+      <h3>Mikhmon Online</h3>
+      <p>Manajemen hotspot & PPP berbasis cloud dengan performa tinggi dan monitoring real-time.</p>
+    </div>
+    <div class="service">
+      <h3>Remote MikroTik</h3>
+      <p>VPN, tunneling, DDNS, dan konektivitas jaringan aman lintas lokasi.</p>
+    </div>
+    <div class="service">
+      <h3>PPOB & Digital Service</h3>
+      <p>Layanan pembayaran, internet, dan multimedia terintegrasi dalam satu ekosistem.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+    <p>© <span id="year"></span> AGATHA FAMILY CORPORATION GROUP BASE IDC</p>
+    <div style="display:flex;gap:10px">
+      <a class="service" href="#">Facebook</a>
+      <a class="service" href="#">WhatsApp</a>
+      <a class="service" href="#">YouTube</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
